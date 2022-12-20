@@ -1,0 +1,2158 @@
+2.2 Attribute Types
+
+Each attribute value is characterized by an attribute name. No more than one
+attribute with a given name may appear in any debugging information entry. There
+are no limitations on the ordering of attributes within a debugging information
+entry.
+
+The attributes are listed in Table 2.2 following.
+
+Table 2.2: Attribute names
+
+----------------------- -------------------------------------------------------
+Attribute               Usage
+----------------------- -------------------------------------------------------
+DW_AT_abstract_origin   Inline instances of inline subprograms
+                        Out-of-line instances of inline subprograms
+...
+----------------------- -------------------------------------------------------
+
+2.5 DWARF Expressions
+
+DWARF expressions describe how to compute a value or specify a location. They
+are expressed in terms of DWARF operations that operate on a stack of values.
+
+A DWARF expression is encoded as a stream of operations, each consisting of an
+opcode followed by zero or more literal operands. The number of operands is
+implied by the opcode.
+
+In addition to the general operations that are defined here, operations that are
+specific to location descriptions are defined in Section 2.6 on page 38.
+
+2.5.1 General Operations
+
+Each general operation represents a postfix operation on a simple stack machine.
+Each element of the stack has a type and a value, and can represent a value of
+any supported base type of the target machine. Instead of a base type, elements
+can have a generic type, which is an integral type that has the size of an
+address on the target machine and unspecified signedness. The value on the top
+of the stack after “executing” the DWARF expression is taken to be the result
+(the address of the object, the value of the array bound, the length of a
+dynamic string, the desired value itself, and so on).
+
+[non-normative] The generic type is the same as the unspecified type used for
+stack operations defined in DWARF Version 4 and before.
+
+2.5.1.1  Literal Encodings
+
+The following operations all push a value onto the DWARF stack. Operations other
+than DW_OP_const_type push a value with the generic type, and if the value of a
+constant in one of these operations is larger than can be stored in a single
+stack element, the value is truncated to the element size and the low-order bits
+are pushed on the stack.
+
+1.  DW_OP_lit0, DW_OP_lit1, ..., DW_OP_lit31
+    The DW_OP_lit<n> operations encode the unsigned literal values from 0
+    through 31, inclusive.
+
+2.  DW_OP_addr
+    The DW_OP_addr operation has a single operand that encodes a machine address
+    and whose size is the size of an address on the target machine.
+
+3.  DW_OP_const1u, DW_OP_const2u, DW_OP_const4u, DW_OP_const8u
+    The single operand of a DW_OP_const<n>u operation provides a 1, 2, 4, or
+    8-byte unsigned integer constant, respectively.
+
+4.  DW_OP_const1s, DW_OP_const2s, DW_OP_const4s, DW_OP_const8s
+    The single operand of a DW_OP_const<n>s operation provides a 1, 2, 4, or
+    8-byte signed integer constant, respectively.
+
+5.  DW_OP_constu
+    The single operand of the DW_OP_constu operation provides an unsigned LEB128
+    integer constant.
+
+6.  DW_OP_consts
+    The single operand of the DW_OP_consts operation provides a signed LEB128
+    integer constant.
+
+7.  DW_OP_addrx
+    The DW_OP_addrx operation has a single operand that encodes an unsigned
+    LEB128 value, which is a zero-based index into the .debug_addr section,
+    where a machine address is stored. This index is relative to the value of
+    the DW_AT_addr_base attribute of the associated compilation unit.
+
+8.  DW_OP_constx
+    The DW_OP_constx operation has a single operand that encodes an unsigned
+    LEB128 value, which is a zero-based index into the .debug_addr section,
+    where a constant, the size of a machine address, is stored. This index is
+    relative to the value of the DW_AT_addr_base attribute of the associated
+    compilation unit.
+
+    [non-normative] The DW_OP_constx operation is provided for constants that
+    require link-time relocation but should not be interpreted by the consumer
+    as a relocatable address (for example, offsets to thread-local storage).
+
+9.  DW_OP_const_type
+    The DW_OP_const_type operation takes three operands. The first operand is an
+    unsigned LEB128 integer that represents the offset of a debugging
+    information entry in the current compilation unit, which must be a
+    DW_TAG_base_type entry that provides the type of the constant provided. The
+    second operand is 1-byte unsigned integer that specifies the size of the
+    constant value, which is the same as the size of the base type referenced by
+    the first operand. The third operand is a sequence of bytes of the given
+    size that is interpreted as a value of the referenced type.
+
+    [non-normative] While the size of the constant can be inferred from the base
+    type definition, it is encoded explicitly into the operation so that the
+    operation can be parsed easily without reference to the .debug_info section.
+
+2.5.1.2 Register Values
+
+The following operations push a value onto the stack that is either the contents
+of a register or the result of adding the contents of a register to a given
+signed offset. DW_OP_regval_type pushes the contents of the register together
+with the given base type, while the other operations push the result of adding
+the contents of a register to a given signed offset together with the generic
+type.
+
+1.  DW_OP_fbreg
+    The DW_OP_fbreg operation provides a signed LEB128 offset from the address
+    specified by the location description in the DW_AT_frame_base attribute of
+    the current function.
+
+    [non-normative] This is typically a stack pointer register plus or minus
+    some offset.
+
+2.  DW_OP_breg0, DW_OP_breg1, ..., DW_OP_breg31
+    The single operand of the DW_OP_breg<n> operations provides a signed LEB128
+    offset from the contents of the specified register.
+
+3.  DW_OP_bregx
+    The DW_OP_bregx operation provides the sum of two values specified by its
+    two operands. The first operand is a register number which is specified by
+    an unsigned LEB128 number. The second operand is a signed LEB128 offset.
+ 
+4.  DW_OP_regval_type
+    The DW_OP_regval_type operation provides the contents of a given register
+    interpreted as a value of a given type. The first operand is an unsigned
+    LEB128 number, which identifies a register whose contents is to be pushed
+    onto the stack. The second operand is an unsigned LEB128 number that
+    represents the offset of a debugging information entry in the current
+    compilation unit, which must be a DW_TAG_base_type entry that provides the
+    type of the value contained in the specified register.
+
+2.5.1.3 Stack Operations
+
+The following operations manipulate the DWARF stack. Operations that index the
+stack assume that the top of the stack (most recently added entry) has index 0.
+
+Each entry on the stack has an associated type.
+
+1.  DW_OP_dup
+    The DW_OP_dup operation duplicates the value (including its type identifier)
+    at the top of the stack.
+
+2.  DW_OP_drop
+    The DW_OP_drop operation pops the value (including its type identifier) at
+    the top of the stack.
+
+3.  DW_OP_pick
+    The single operand of the DW_OP_pick operation provides a 1-byte index. A
+    copy of the stack entry (including its type identifier) with the specified
+    index (0 through 255, inclusive) is pushed onto the stack.
+
+4.  DW_OP_over
+    The DW_OP_over operation duplicates the entry currently second in the stack
+    at the top of the stack. This is equivalent to a DW_OP_pick operation, with
+    index 1.
+
+5.  DW_OP_swap
+    The DW_OP_swap operation swaps the top two stack entries. The entry at the
+    top of the stack (including its type identifier) becomes the second stack
+    entry, and the second entry (including its type identifier) becomes the top
+    of the stack.
+
+6.  DW_OP_rot
+    The DW_OP_rot operation rotates the first three stack entries. The entry at
+    the top of the stack (including its type identifier) becomes the third stack
+    entry, the second entry (including its type identifier) becomes the top of
+    the stack, and the third entry (including its type identifier) becomes the
+    second entry.
+
+7.  DW_OP_deref
+    The DW_OP_deref operation pops the top stack entry and treats it as an
+    address. The popped value must have an integral type. The value retrieved
+    from that address is pushed, and has the generic type. The size of the data
+    retrieved from the dereferenced address is the size of an address on the
+    target machine.
+
+8.  DW_OP_deref_size
+    The DW_OP_deref_size operation behaves like the DW_OP_deref operation: it
+    pops the top stack entry and treats it as an address. The popped value must
+    have an integral type. The value retrieved from that address is pushed, and
+    has the generic type. In the DW_OP_deref_size operation, however, the size
+    in bytes of the data retrieved from the dereferenced address is specified by
+    the single operand. This operand is a 1-byte unsigned integral constant
+    whose value may not be larger than the size of the generic type. The data
+    retrieved is zero extended to the size of an address on the target machine
+    before being pushed onto the expression stack.
+
+9.  DW_OP_deref_type
+    The DW_OP_deref_type operation behaves like the DW_OP_deref_size operation:
+    it pops the top stack entry and treats it as an address. The popped value
+    must have an integral type. The value retrieved from that address is pushed
+    together with a type identifier. In the DW_OP_deref_type operation, the size
+    in bytes of the data retrieved from the dereferenced address is specified by
+    the first operand. This operand is a 1-byte unsigned integral constant whose
+    value which is the same as the size of the base type referenced by the
+    second operand. The second operand is an unsigned LEB128 integer that
+    represents the offset of a debugging information entry in the current
+    compilation unit, which must be a DW_TAG_base_type entry that provides the
+    type of the data pushed.
+
+    [non-normative] While the size of the pushed value could be inferred from
+    the base type definition, it is encoded explicitly into the operation so
+    that the operation can be parsed easily without reference to the .debug_info
+    section.
+
+10. DW_OP_xderef
+    The DW_OP_xderef operation provides an extended dereference mechanism. The
+    entry at the top of the stack is treated as an address. The second stack
+    entry is treated as an “address space identifier” for those architectures
+    that support multiple address spaces. Both of these entries must have
+    integral type identifiers. The top two stack elements are popped, and a data
+    item is retrieved through an implementation-defined address calculation and
+    pushed as the new stack top together with the generic type identifier. The
+    size of the data retrieved from the dereferenced address is the size of the
+    generic type.
+
+11. DW_OP_xderef_size
+    The DW_OP_xderef_size operation behaves like the DW_OP_xderef operation. The
+    entry at the top of the stack is treated as an address. The second stack
+    entry is treated as an “address space identifier” for those architectures
+    that support multiple address spaces. Both of these entries must have
+    integral type identifiers. The top two stack elements are popped, and a data
+    item is retrieved through an implementation-defined address calculation and
+    pushed as the new stack top. In the DW_OP_xderef_size operation, however,
+    the size in bytes of the data retrieved from the dereferenced address is
+    specified by the single operand. This operand is a 1-byte unsigned integral
+    constant whose value may not be larger than the size of an address on the
+    target machine. The data retrieved is zero extended to the size of an
+    address on the target machine before being pushed onto the expression stack
+    together with the generic type identifier.
+
+12. DW_OP_xderef_type
+    The DW_OP_xderef_type operation behaves like the DW_OP_xderef_size
+    operation: it pops the top two stack entries, treats them as an address and
+    an address space identifier, and pushes the value retrieved. In the
+    DW_OP_xderef_type operation, the size in bytes of the data retrieved from
+    the dereferenced address is specified by the first operand. This operand is
+    a 1-byte unsigned integral constant whose value value which is the same as
+    the size of the base type referenced by the second operand. The second
+    operand is an unsigned LEB128 integer that represents the offset of a
+    debugging information entry in the current compilation unit, which must be a
+    DW_TAG_base_type entry that provides the type of the data pushed.
+
+13. DW_OP_push_object_address
+    The DW_OP_push_object_address operation pushes the address of the object
+    currently being evaluated as part of evaluation of a user presented
+    expression. This object may correspond to an independent variable described
+    by its own debugging information entry or it may be a component of an array,
+    structure, or class whose address has been dynamically determined by an
+    earlier step during user expression evaluation.
+
+    [non-normative] This operator provides explicit functionality (especially
+    for arrays involving descriptors) that is analogous to the implicit push of
+    the base address of a structure prior to evaluation of a
+    DW_AT_data_member_location to access a data member of a structure. For an
+    example, see Appendix D.2 on page 292.
+
+14. DW_OP_form_tls_address
+    The DW_OP_form_tls_address operation pops a value from the stack, which must
+    have an integral type identifier, translates this value into an address in
+    the thread-local storage for a thread, and pushes the address onto the stack
+    together with the generic type identifier. The meaning of the value on the
+    top of the stack prior to this operation is defined by the run-time
+    environment. If the run-time environment supports multiple thread-local
+    storage blocks for a single thread, then the block corresponding to the
+    executable or shared library containing this DWARF expression is used.
+
+    [non-normative] Some implementations of C, C++, Fortran, and other
+    languages, support a thread-local storage class. Variables with this storage
+    class have distinct values and addresses in distinct threads, much as
+    automatic variables have distinct values and addresses in each function
+    invocation. Typically, there is a single block of storage containing all
+    thread-local variables declared in the main executable, and a separate block
+    for the variables declared in each shared library. Each thread-local
+    variable can then be accessed in its block using an identifier. This
+    identifier is typically an offset into the block and pushed onto the DWARF
+    stack by one of the DW_OP_const<n><x> operations prior to the
+    DW_OP_form_tls_address operation. Computing the address of the appropriate
+    block can be complex (in some cases, the compiler emits a function call to
+    do it), and difficult to describe using ordinary DWARF location
+    descriptions. Instead of forcing complex thread-local storage calculations
+    into the DWARF expressions, the DW_OP_form_tls_address allows the consumer
+    to perform the computation based on the run-time environment.
+ 
+15. DW_OP_call_frame_cfa
+    The DW_OP_call_frame_cfa operation pushes the value of the CFA, obtained
+    from the Call Frame Information (see Section 6.4 on page 171).
+
+    [non-normative] Although the value of DW_AT_frame_base can be computed using
+    other DWARF expression operators, in some cases this would require an
+    extensive location list because the values of the registers used in
+    computing the CFA change during a subroutine. If the Call Frame Information
+    is present, then it already encodes such changes, and it is space efficient
+    to reference that.
+
+[non-normative] Examples illustrating many of these stack operations are found
+in Appendix D.1.2 on page 289.
+
+2.5.1.4 Arithmetic and Logical Operations
+
+The following provide arithmetic and logical operations. Operands of an
+operation with two operands must have the same type, either the same base type
+or the generic type. The result of the operation which is pushed back has the
+same type as the type of the operand(s).
+
+If the type of the operands is the generic type, except as otherwise specified,
+the arithmetic operations perform addressing arithmetic, that is, unsigned
+arithmetic that is performed modulo one plus the largest representable address.
+
+Operations other than DW_OP_abs, DW_OP_div, DW_OP_minus, DW_OP_mul, DW_OP_neg
+and DW_OP_plus require integral types of the operand (either integral base type
+or the generic type). Operations do not cause an exception on overflow.
+
+1.  DW_OP_abs
+    The DW_OP_abs operation pops the top stack entry, interprets it as a signed
+    value and pushes its absolute value. If the absolute value cannot be
+    represented, the result is undefined.
+
+2.  DW_OP_and
+    The DW_OP_and operation pops the top two stack values, performs a bitwise
+    and operation on the two, and pushes the result.
+
+3.  DW_OP_div
+    The DW_OP_div operation pops the top two stack values, divides the former
+    second entry by the former top of the stack using signed division, and
+    pushes the result.
+
+4.  DW_OP_minus
+    The DW_OP_minus operation pops the top two stack values, subtracts the
+    former top of the stack from the former second entry, and pushes the result.
+
+5.  DW_OP_mod
+    The DW_OP_mod operation pops the top two stack values and pushes the result
+    of the calculation: former second stack entry modulo the former top of the
+    stack.
+
+6.  DW_OP_mul
+    The DW_OP_mul operation pops the top two stack entries, multiplies them
+    together, and pushes the result.
+
+7.  DW_OP_neg
+    The DW_OP_neg operation pops the top stack entry, interprets it as a signed
+    value and pushes its negation. If the negation cannot be represented, the
+    result is undefined.
+
+8.  DW_OP_not
+    The DW_OP_not operation pops the top stack entry, and pushes its bitwise
+    complement.
+
+9.  DW_OP_or
+    The DW_OP_or operation pops the top two stack entries, performs a bitwise or
+    operation on the two, and pushes the result.
+
+10. DW_OP_plus
+    The DW_OP_plus operation pops the top two stack entries, adds them together,
+    and pushes the result.
+
+11. DW_OP_plus_uconst
+    The DW_OP_plus_uconst operation pops the top stack entry, adds it to the
+    unsigned LEB128 constant operand interpreted as the same type as the operand
+    popped from the top of the stack and pushes the result.
+
+    [non-normative] This operation is supplied specifically to be able to encode
+    more field offsets in two bytes than can be done with “DW_OP_lit<n>
+    DW_OP_plus.”
+
+12. DW_OP_shl
+    The DW_OP_shl operation pops the top two stack entries, shifts the former
+    second entry left (filling with zero bits) by the number of bits specified
+    by the former top of the stack, and pushes the result.
+
+13. DW_OP_shr
+    The DW_OP_shr operation pops the top two stack entries, shifts the former
+    second entry right logically (filling with zero bits) by the number of bits
+    specified by the former top of the stack, and pushes the result.
+
+14. DW_OP_shra
+    The DW_OP_shra operation pops the top two stack entries, shifts the former
+    second entry right arithmetically (divide the magnitude by 2, keep the same
+    sign for the result) by the number of bits specified by the former top of
+    the stack, and pushes the result.
+
+15. DW_OP_xor
+    The DW_OP_xor operation pops the top two stack entries, performs a bitwise
+    exclusive-or operation on the two, and pushes the result.
+
+2.5.1.5 Control Flow Operations
+
+The following operations provide simple control of the flow of a DWARF
+expression.
+
+1.  DW_OP_le, DW_OP_ge, DW_OP_eq, DW_OP_lt, DW_OP_gt, DW_OP_ne
+    The six relational operators each:
+
+      * pop the top two stack values, which have the same type, either the same
+        base type or the generic type,
+
+      * compare the operands:
+        < former second entry >< relational operator >< former top entry >
+
+      * push the constant value 1 onto the stack if the result of the operation
+        is true or the constant value 0 if the result of the operation is false.
+        The pushed value has the generic type.
+
+    If the operands have the generic type, the comparisons are performed as
+    signed operations.
+
+2.  DW_OP_skip
+    DW_OP_skip is an unconditional branch. Its single operand is a 2-byte signed
+    integer constant. The 2-byte constant is the number of bytes of the DWARF
+    expression to skip forward or backward from the current operation, beginning
+    after the 2-byte constant.
+ 
+3.  DW_OP_bra
+    DW_OP_bra is a conditional branch. Its single operand is a 2-byte signed
+    integer constant. This operation pops the top of stack. If the value popped
+    is not the constant 0, the 2-byte constant operand is the number of bytes of
+    the DWARF expression to skip forward or backward from the current operation,
+    beginning after the 2-byte constant.
+
+4.  DW_OP_call2, DW_OP_call4, DW_OP_call_ref
+    DW_OP_call2, DW_OP_call4, and DW_OP_call_ref perform DWARF procedure calls
+    during evaluation of a DWARF expression or location description. For
+    DW_OP_call2 and DW_OP_call4, the operand is the 2- or 4-byte unsigned
+    offset, respectively, of a debugging information entry in the current
+    compilation unit. The DW_OP_call_ref operator has a single operand. In the
+    32-bit DWARF format, the operand is a 4-byte unsigned value; in the 64-bit
+    DWARF format, it is an 8-byte unsigned value (see Section 7.4 following).
+    The operand is used as the offset of a debugging information entry in a
+    .debug_info section which may be contained in an executable or shared object
+    file other than that containing the operator. For references from one
+    executable or shared object file to another, the relocation must be
+    performed by the consumer.
+
+    [non-normative] Operand interpretation of DW_OP_call2, DW_OP_call4 and
+    DW_OP_call_ref is exactly like that for DW_FORM_ref2, DW_FORM_ref4 and
+    DW_FORM_ref_addr, respectively (see Section 7.5.4 on page 207).
+
+    These operations transfer control of DWARF expression evaluation to the
+    DW_AT_location attribute of the referenced debugging information entry. If
+    there is no such attribute, then there is no effect. Execution of the DWARF
+    expression of a DW_AT_location attribute may add to and/or remove from
+    values on the stack. Execution returns to the point following the call when
+    the end of the attribute is reached. Values on the stack at the time of the
+    call may be used as parameters by the called expression and values left on
+    the stack by the called expression may be used as return values by prior
+    agreement between the calling and called expressions.
+
+2.5.1.6 Type Conversions
+
+The following operations provides for explicit type conversion.
+
+1.  DW_OP_convert
+    The DW_OP_convert operation pops the top stack entry, converts it to a
+    different type, then pushes the result. It takes one operand, which is an
+    unsigned LEB128 integer that represents the offset of a debugging
+    information entry in the current compilation unit, or value 0 which
+    represents the generic type. If the operand is non-zero, the referenced
+    entry must be a DW_TAG_base_type entry that provides the type to which the
+    value is converted.
+
+2.  DW_OP_reinterpret
+    The DW_OP_reinterpret operation pops the top stack entry, reinterprets the
+    bits in its value as a value of a different type, then pushes the result. It
+    takes one operand, which is an unsigned LEB128 integer that represents the
+    offset of a debugging information entry in the current compilation unit, or
+    value 0 which represents the generic type. If the operand is non-zero, the
+    referenced entry must be a DW_TAG_base_type entry that provides the type to
+    which the value is converted. The type of the operand and result type must
+    have the same size in bits.
+
+2.5.1.7 Special Operations
+
+There are these special operations currently defined:
+
+1.  DW_OP_nop
+    The DW_OP_nop operation is a place holder. It has no effect on the location
+    stack or any of its values.
+
+2.  DW_OP_entry_value
+    The DW_OP_entry_value operation pushes the value that the described location
+    held upon entering the current subprogram. It has two operands: an unsigned
+    LEB128 length, followed by a block containing a DWARF expression or a
+    register location description (see Section 2.6.1.1.3 on page 39). The length
+    operand specifies the length in bytes of the block. If the block contains a
+    DWARF expression, the DWARF expression is evaluated as if it had been
+    evaluated upon entering the current subprogram. The DWARF expression assumes
+    no values are present on the DWARF stack initially and results in exactly
+    one value being pushed on the DWARF stack when completed. If the block
+    contains a register location description, DW_OP_entry_value pushes the value
+    that register had upon entering the current subprogram.
+
+    DW_OP_push_object_address is not meaningful inside of this DWARF operation.
+
+    [non-normative] The register location description provides a more compact
+    form for the case where the value was in a register on entry to the
+    subprogram.
+
+    [non-normative] The values needed to evaluate DW_OP_entry_value could be
+    obtained in several ways. The consumer could suspend execution on entry to
+    the subprogram, record values needed by DW_OP_entry_value expressions within
+    the subprogram, and then continue; when evaluating DW_OP_entry_value, the
+    consumer would use these recorded values rather than the current values. Or,
+    when evaluating DW_OP_entry_value, the consumer could virtually unwind using
+    the Call Frame Information (see Section 6.4 on page 171) to recover register
+    values that might have been clobbered since the subprogram entry point.
+
+2.6 Location Descriptions
+
+[non-normative] Debugging information must provide consumers a way to find the
+location of program variables, determine the bounds of dynamic arrays and
+strings, and possibly to find the base address of a subroutine’s stack frame or
+the return address of a subroutine. Furthermore, to meet the needs of recent
+computer architectures and optimization techniques, debugging information must
+be able to describe the location of an object whose location changes over the
+object’s lifetime.
+
+Information about the location of program objects is provided by location
+descriptions. Location descriptions can be either of two forms:
+
+1.  Single location descriptions, which are a language independent
+    representation of addressing rules of arbitrary complexity built from DWARF
+    expressions (See Section 2.5 on page 26) and/or other DWARF operations
+    specific to describing locations. They are sufficient for describing the
+    location of any object as long as its lifetime is either static or the same
+    as the lexical block that owns it, and it does not move during its lifetime.
+
+2.  Location lists, which are used to describe objects that have a limited
+    lifetime or change their location during their lifetime. Location lists are
+    described in Section 2.6.2 on page 43 below.
+
+Location descriptions are distinguished in a context sensitive manner. As the
+value of an attribute, a location description is encoded using class exprloc and
+a location list is encoded using class loclist (which serves as an index into a
+separate section containing location lists).
+ 
+2.6.1 Single Location Descriptions
+
+A single location description is either:
+
+1.  A simple location description, representing an object which exists in one
+    contiguous piece at the given location, or
+
+2.  A composite location description consisting of one or more simple location
+    descriptions, each of which is followed by one composition operation. Each
+    simple location description describes the location of one piece of the
+    object; each composition operation describes which part of the object is
+    located there. Each simple location description that is a DWARF expression
+    is evaluated independently of any others.
+
+2.6.1.1 Simple Location Descriptions
+
+A simple location description consists of one contiguous piece or all of an
+object or value.
+
+2.6.1.1.1 Empty Location Descriptions
+
+An empty location description consists of a DWARF expression containing no
+operations. It represents a piece or all of an object that is present in the
+source but not in the object code (perhaps due to optimization).
+
+2.6.1.1.2 Memory Location Descriptions
+
+A memory location description consists of a non-empty DWARF expression (see
+Section 2.5 on page 26), whose value is the address of a piece or all of an
+object or other entity in memory.
+
+2.6.1.1.3 Register Location Descriptions
+
+A register location description consists of a register name operation, which
+represents a piece or all of an object located in a given register.
+
+[non-normative] Register location descriptions describe an object (or a piece of
+an object) that resides in a register, while the opcodes listed in Section
+2.5.1.2 on page 28 are used to describe an object (or a piece of an object) that
+is located in memory at an address that is contained in a register (possibly
+offset by some constant). A register location description must stand alone as
+the entire description of an object or a piece of an object.
+
+The following DWARF operations can be used to specify a register location.
+
+[non-normative] Note that the register number represents a DWARF specific
+mapping of numbers onto the actual registers of a given architecture. The
+mapping should be chosen to gain optimal density and should be shared by all
+users of a given architecture. It is recommended that this mapping be defined by
+the ABI authoring committee for each architecture.
+
+1.  DW_OP_reg0, DW_OP_reg1, ..., DW_OP_reg31
+    The DW_OP_reg<n> operations encode the names of up to 32 registers, numbered
+    from 0 through 31, inclusive. The object addressed is in register n.
+
+2.  DW_OP_regx
+    The DW_OP_regx operation has a single unsigned LEB128 literal operand that
+    encodes the name of a register.
+
+[non-normative] These operations name a register location. To fetch the contents
+of a register, it is necessary to use one of the register based addressing
+operations, such as DW_OP_bregx (Section 2.5.1.2 on page 28).
+
+2.6.1.1.4 Implicit Location Descriptions
+
+An implicit location description represents a piece or all of an object which
+has no actual location but whose contents are nonetheless either known or known
+to be undefined.
+
+The following DWARF operations may be used to specify a value that has no
+location in the program but is a known constant or is computed from other
+locations and values in the program.
+
+1.  DW_OP_implicit_value
+    The DW_OP_implicit_value operation specifies an immediate value using two
+    operands: an unsigned LEB128 length, followed by a sequence of bytes of the
+    given length that contain the value.
+
+2.  DW_OP_stack_value
+    The DW_OP_stack_value operation specifies that the object does not exist in
+    memory but its value is nonetheless known and is at the top of the DWARF
+    expression stack. In this form of location description, the DWARF expression
+    represents the actual value of the object, rather than its location. The
+    DW_OP_stack_value operation terminates the expression.
+
+3.  DW_OP_implicit_pointer
+    [non-normative] An optimizing compiler may eliminate a pointer, while still
+    retaining the value that the pointer addressed. DW_OP_implicit_pointer
+    allows a producer to describe this value.
+
+    The DW_OP_implicit_pointer operation specifies that the object is a pointer
+    that cannot be represented as a real pointer, even though the value it would
+    point to can be described. In this form of location description, the DWARF
+    expression refers to a debugging information entry that represents the
+    actual value of the object to which the pointer would point. Thus, a
+    consumer of the debug information would be able to show the value of the
+    dereferenced pointer, even when it cannot show the value of the pointer
+    itself.
+
+    The DW_OP_implicit_pointer operation has two operands: a reference to a
+    debugging information entry that describes the dereferenced object’s value,
+    and a signed number that is treated as a byte offset from the start of that
+    value. The first operand is a 4-byte unsigned value in the 32-bit DWARF
+    format, or an 8-byte unsigned value in the 64-bit DWARF format (see Section
+    7.4 on page 196). The second operand is a signed LEB128 number.
+
+    The first operand is used as the offset of a debugging information entry in
+    a .debug_info section, which may be contained in an executable or shared
+    object file other than that containing the operator. For references from one
+    executable or shared object file to another, the relocation must be
+    performed by the consumer.
+
+    [non-normative] The debugging information entry referenced by a
+    DW_OP_implicit_pointer operation is typically a DW_TAG_variable or
+    DW_TAG_formal_parameter entry whose DW_AT_location attribute gives a second
+    DWARF expression or a location list that describes the value of the object,
+    but the referenced entry may be any entry that contains a DW_AT_location or
+    DW_AT_const_value attribute (for example, DW_TAG_dwarf_procedure). By using
+    the second DWARF expression, a consumer can reconstruct the value of the
+    object when asked to dereference the pointer described by the original DWARF
+    expression containing the DW_OP_implicit_pointer operation.
+
+[non-normative] DWARF location descriptions are intended to yield the location
+of a value rather than the value itself. An optimizing compiler may perform a
+number of code transformations where it becomes impossible to give a location
+for a value, but it remains possible to describe the value itself. Section
+2.6.1.1.3 on page 39 describes operators that can be used to describe the
+location of a value when that value exists in a register but not in memory. The
+operations in this section are used to describe values that exist neither in
+memory nor in a single register.
+
+2.6.1.2 Composite Location Descriptions
+
+A composite location description describes an object or value which may be
+contained in part of a register or stored in more than one location. Each piece
+is described by a composition operation, which does not compute a value nor
+store any result on the DWARF stack. There may be one or more composition
+operations in a single composite location description. A series of such
+operations describes the parts of a value in memory address order.
+
+Each composition operation is immediately preceded by a simple location
+description which describes the location where part of the resultant value is
+contained.
+
+1.  DW_OP_piece
+    The DW_OP_piece operation takes a single operand, which is an unsigned
+    LEB128 number. The number describes the size in bytes of the piece of the
+    object referenced by the preceding simple location description. If the piece
+    is located in a register, but does not occupy the entire register, the
+    placement of the piece within that register is defined by the ABI.
+
+    [non-normative] Many compilers store a single variable in sets of registers,
+    or store a variable partially in memory and partially in registers.
+    DW_OP_piece provides a way of describing how large a part of a variable a
+    particular DWARF location description refers to.
+
+2.  DW_OP_bit_piece
+    The DW_OP_bit_piece operation takes two operands. The first is an unsigned
+    LEB128 number that gives the size in bits of the piece. The second is an
+    unsigned LEB128 number that gives the offset in bits from the location
+    defined by the preceding DWARF location description.
+
+    Interpretation of the offset depends on the location description. If the
+    location description is empty, the offset doesn’t matter and the
+    DW_OP_bit_piece operation describes a piece consisting of the given number
+    of bits whose values are undefined. If the location is a register, the
+    offset is from the least significant bit end of the register. If the
+    location is a memory address, the DW_OP_bit_piece operation describes a
+    sequence of bits relative to the location whose address is on the top of the
+    DWARF stack using the bit numbering and direction conventions that are
+    appropriate to the current language on the target system. If the location is
+    any implicit value or stack value, the DW_OP_bit_piece operation describes a
+    sequence of bits using the least significant bits of that value.
+
+[non-normative] DW_OP_bit_piece is used instead of DW_OP_piece when the piece to
+be assembled into a value or assigned to is not byte-sized or is not at the
+start of a register or addressable unit of memory.
+
+2.6.2 Location Lists
+
+Location lists are used in place of location descriptions whenever the object
+whose location is being described can change location during its lifetime.
+Location lists are contained in a separate object file section called
+.debug_loclists or .debug_loclists.dwo (for split DWARF object files).
+
+A location list is indicated by a location or other attribute whose value is of
+class loclist (see Section 7.5.5 on page 212).
+
+[non-normative] This location list representation, the loclist class, and the
+related DW_AT_loclists_base attribute are new in DWARF Version 5. Together they
+eliminate most or all of the object language relocations previously needed for
+location lists.
+
+A location list consists of a series of location list entries. Each location
+list entry is one of the following kinds:
+
+  * Bounded location description. This kind of entry provides a location
+    description that specifies the location of an object that is valid over a
+    lifetime bounded by a starting and ending address. The starting address is
+    the lowest address of the address range over which the location is valid.
+    The ending address is the address of the first location past the highest
+    address of the address range. When the current PC is within the given range,
+    the location description may be used to locate the specified object.
+
+    There are several kinds of bounded location description entries which differ
+    in the way that they specify the starting and ending addresses.
+
+    The address ranges defined by the bounded location descriptions of a
+    location list may overlap. When they do, they describe a situation in which
+    an object exists simultaneously in more than one place. If all of the
+    address ranges in a given location list do not collectively cover the entire
+    range over which the object in question is defined, and there is no
+    following default location description, it is assumed that the object is not
+    available for the portion of the range that is not covered.
+
+  * Default location description. This kind of entry provides a location
+    description that specifies the location of an object that is valid when no
+    bounded location description applies.
+
+  * Base address. This kind of entry provides an address to be used as the base
+    address for beginning and ending address offsets given in certain kinds of
+    bounded location description. The applicable base address of a bounded
+    location description entry is the address specified by the closest preceding
+    base address entry in the same location list. If there is no preceding base
+    address entry, then the applicable base address defaults to the base address
+    of the compilation unit (see Section 3.1.1 on page 60).
+
+    In the case of a compilation unit where all of the machine code is contained
+    in a single contiguous section, no base address entry is needed.
+
+  * End-of-list. This kind of entry marks the end of the location list.
+
+A location list consists of a sequence of zero or more bounded location
+description or base address entries, optionally followed by a default location
+entry, and terminated by an end-of-list entry.
+
+Each location list entry begins with a single byte identifying the kind of that
+entry, followed by zero or more operands depending on the kind.
+
+In the descriptions that follow, these terms are used for operands:
+
+  * A counted location description operand consists of an unsigned ULEB integer
+    giving the length of the location description (see Section 2.6.1 on page 39)
+    that immediately follows.
+
+  * An address index operand is the index of an address in the .debug_addr
+    section. This index is relative to the value of the DW_AT_addr_base
+    attribute of the associated compilation unit. The address given by this kind
+    of operand is not relative to the compilation unit base address.
+
+  * A target address operand is an address on the target machine. (Its size is
+    the same as used for attribute values of class address, specifically,
+    DW_FORM_addr.)
+
+The following entry kinds are defined for use in both split or non-split units:
+
+1.  DW_LLE_end_of_list
+    An end-of-list entry contains no further data.
+
+    [non-normative] A series of this kind of entry may be used for padding or
+    alignment purposes.
+
+2.  DW_LLE_base_addressx
+    This is a form of base address entry that has one unsigned LEB128 operand.
+    The operand value is an address index (into the .debug_addr section) that
+    indicates the applicable base address used by subsequent DW_LLE_offset_pair
+    entries.
+
+3.  DW_LLE_startx_endx
+    This is a form of bounded location description entry that has two unsigned
+    LEB128 operands. The operand values are address indices (into the
+    .debug_addr section). These indicate the starting and ending addresses,
+    respectively, that define the address range for which this location is
+    valid. These operands are followed by a counted location description.
+
+4.  DW_LLE_startx_length
+    This is a form of bounded location description that has two unsigned ULEB
+    operands. The first value is an address index (into the .debug_addr section)
+    that indicates the beginning of the address range over which the location is
+    valid. The second value is the length of the range. These operands are
+    followed by a counted location description.
+
+5.  DW_LLE_offset_pair
+    This is a form of bounded location description entry that has two unsigned
+    LEB128 operands. The values of these operands are the starting and ending
+    offsets, respectively, relative to the applicable base address, that define
+    the address range for which this location is valid. These operands are
+    followed by a counted location description.
+
+6.  DW_LLE_default_location
+    The operand is a counted location description which defines where an object
+    is located if no prior location description is valid.
+
+The following kinds of location list entries are defined for use only in
+non-split DWARF units:
+
+7.  DW_LLE_base_address
+    A base address entry has one target address operand. This address is used as
+    the base address when interpreting offsets in subsequent location list
+    entries of kind DW_LLE_offset_pair.
+
+8.  DW_LLE_start_end
+    This is a form of bounded location description entry that has two target
+    address operands. These indicate the starting and ending addresses,
+    respectively, that define the address range for which the location is valid.
+    These operands are followed by a counted location description.
+
+9.  DW_LLE_start_length
+    This is a form of bounded location description entry that has one target
+    address operand value and an unsigned LEB128 integer operand value. The
+    address is the beginning address of the range over which the location
+    description is valid, and the length is the number of bytes in that range.
+    These operands are followed by a counted location description.
+
+2.12 Segmented Addresses
+
+[non-normative] In some systems, addresses are specified as offsets within a
+given segment rather than as locations within a single flat address space.
+
+Any debugging information entry that contains a description of the location of
+an object or subroutine may have a DW_AT_segment attribute, whose value is a
+location description. The description evaluates to the segment selector of the
+item being described. If the entry containing the DW_AT_segment attribute has a
+DW_AT_low_pc, DW_AT_high_pc, DW_AT_ranges or DW_AT_entry_pc attribute, or a
+location description that evaluates to an address, then those address values
+represent the offset portion of the address within the segment specified by
+DW_AT_segment.
+
+If an entry has no DW_AT_segment attribute, it inherits the segment value from
+its parent entry. If none of the entries in the chain of parents for this entry
+back to its containing compilation unit entry have DW_AT_segment attributes,
+then the entry is assumed to exist within a flat address space. Similarly, if
+the entry has a DW_AT_segment attribute containing an empty location
+description, that entry is assumed to exist within a flat address space.
+
+[non-normative] Some systems support different classes of addresses. The address
+class may affect the way a pointer is dereferenced or the way a subroutine is
+called.
+
+Any debugging information entry representing a pointer or reference type or a
+subroutine or subroutine type may have a DW_AT_address_class attribute, whose
+value is an integer constant. The set of permissible values is specific to each
+target architecture. The value DW_ADDR_none, however, is common to all
+encodings, and means that no address class has been specified.
+
+[non-normative] For example, the Intel386 TM processor might use the following
+values:
+
+Table 2.7: Example address class codes
+-------------- ------ --------------------------------
+Name           Value  Meaning
+-------------- ------ --------------------------------
+DW_ADDR_none   0      no class specified
+DW_ADDR_near16 1      16-bit offset, no segment
+DW_ADDR_far16  2      16-bit offset, 16-bit segment
+DW_ADDR_huge16 3      16-bit offset, 16-bit segment
+DW_ADDR_near32 4      32-bit offset, no segment
+DW_ADDR_far32  5      32-bit offset, 16-bit segment
+-------------- ------ --------------------------------
+
+3.1.1 Full and Partial Compilation Unit Entries
+
+Table 3.1: Language names
+------------------ ---------------------
+Language name      Meaning
+------------------ ---------------------
+...
+------------------ ---------------------
+
+3.3.5 Low-Level Information
+
+A subroutine or entry point entry may have a DW_AT_return_addr attribute, whose
+value is a location description. The location specified is the place where the
+return address for the subroutine or entry point is stored.
+
+A subroutine or entry point entry may also have a DW_AT_frame_base attribute,
+whose value is a location description that describes the "frame base" for the
+subroutine or entry point. If the location description is a simple register
+location description, the given register contains the frame base address. If the
+location description is a DWARF expression, the result of evaluating that
+expression is the frame base address. Finally, for a location list, this
+interpretation applies to each location description contained in the list of
+location list entries.
+
+[non-normative] The use of one of the DW_OP_reg<n> operations in this context is
+equivalent to using DW_OP_breg<n>(0) but more compact. However, these are not
+equivalent in general.
+
+[non-normative] The frame base for a subprogram is typically an address relative
+to the first unit of storage allocated for the subprogram's stack frame. The
+DW_AT_frame_base attribute can be used in several ways:
+
+1.  [non-normative] In subprograms that need location lists to locate local
+    variables, the DW_AT_frame_base can hold the needed location list, while all
+    variables' location descriptions can be simpler ones involving the frame
+    base.
+
+2.  [non-normative] It can be used in resolving "up-level" addressing within
+    nested routines. (See also DW_AT_static_link, below)
+
+[non-normative] Some languages support nested subroutines. In such languages, it
+is possible to reference the local variables of an outer subroutine from within
+an inner subroutine. The DW_AT_static_link and DW_AT_frame_base attributes allow
+debuggers to support this same kind of referencing.
+
+If a subroutine or entry point is nested, it may have a DW_AT_static_link
+attribute, whose value is a location description that computes the frame base of
+the relevant instance of the subroutine that immediately encloses the subroutine
+or entry point.
+
+In the context of supporting nested subroutines, the DW_AT_frame_base attribute
+value obeys the following constraints:
+
+1.  It computes a value that does not change during the life of the subprogram,
+    and
+
+2.  The computed value is unique among instances of the same subroutine.
+
+    [non-normative] For typical DW_AT_frame_base use, this means that a
+    recursive subroutine's stack frame must have non-zero size.
+
+[non-normative] If a debugger is attempting to resolve an up-level reference to
+a variable, it uses the nesting structure of DWARF to determine which subroutine
+is the lexical parent and the DW_AT_static_link value to identify the
+appropriate active frame of the parent. It can then attempt to find the
+reference within the context of the parent.
+
+3.4.2 Call Site Parameters
+
+The call site entry may own DW_TAG_call_site_parameter debugging information
+entries representing the parameters passed to the call. Call site parameter
+entries occur in the same order as the corresponding parameters in the source.
+Each such entry has a DW_AT_location attribute which is a location description.
+This location description describes where the parameter is passed (usually
+either some register, or a memory location expressible as the contents of the
+stack register plus some offset).
+
+Each DW_TAG_call_site_parameter entry may have a DW_AT_call_value attribute
+which is a DWARF expression which when evaluated yields the value of the
+parameter at the time of the call.
+
+[non-normative] If it is not possible to avoid registers or memory locations
+that might be clobbered by the call in the expression, then the DW_AT_call_value
+attribute should not be provided. The reason for the restriction is that the
+value of the parameter may be needed in the midst of the callee, where the call
+clobbered registers or memory might be already clobbered, and if the consumer is
+not assured by the producer it can safely use those values, the consumer can not
+safely use the values at all.
+
+For parameters passed by reference, where the code passes a pointer to a
+location which contains the parameter, or for reference type parameters, the
+DW_TAG_call_site_parameter entry may also have a DW_AT_call_data_location
+attribute whose value is a location description and a DW_AT_call_data_value
+attribute whose value is a DWARF expression. The DW_AT_call_data_location
+attribute describes where the referenced value lives during the call. If it is
+just DW_OP_push_object_address, it may be left out. The DW_AT_call_data_value
+attribute describes the value in that location. The expression should not use
+registers or memory locations that might be clobbered by the call, as it might
+be evaluated after virtually unwinding from the called function back to the
+caller.
+
+Each call site parameter entry may also have a DW_AT_call_parameter attribute
+which contains a reference to a DW_TAG_formal_parameter entry, DW_AT_type
+attribute referencing the type of the parameter or DW_AT_name attribute
+describing the parameter's name.
+
+[non-normative] Examples using call site entries and related attributes are
+found in Appendix D.15 on page 353.
+
+4.1 Data Object Entries
+
+Program variables, formal parameters and constants are represented by debugging
+information entries with the tags DW_TAG_variable, DW_TAG_formal_parameter and
+DW_TAG_constant, respectively.
+
+[non-normative] The tag DW_TAG_constant is used for languages that have true
+named constants.
+
+The debugging information entry for a program variable, formal parameter or
+constant may have the following attributes:
+
+1.  A DW_AT_name attribute, whose value is a null-terminated string containing
+    the data object name.
+
+    If a variable entry describes an anonymous object (for example an anonymous
+    union), the name attribute is omitted or its value consists of a single zero
+    byte.
+
+2.  A DW_AT_external attribute, which is a flag, if the name of a variable is 
+    visible outside of its enclosing compilation unit.
+
+    [non-normative] The definitions of C++ static data members of structures or
+    classes are represented by variable entries flagged as external. Both file
+    static and local variables in C and C++ are represented by non-external
+    variable entries.
+
+3.  A DW_AT_declaration attribute, which is a flag that indicates whether this
+    entry represents a non-defining declaration of an object.
+
+4.  A DW_AT_location attribute, whose value describes the location of a variable
+    or parameter at run-time.
+
+    If no location attribute is present in a variable entry representing the
+    definition of a variable (that is, with no DW_AT_declaration attribute), or
+    if the location attribute is present but has an empty location description
+    (as described in Section 2.6 on page 38), the variable is assumed to exist
+    in the source code but not in the executable program (but see number 10,
+    below).
+
+    In a variable entry representing a non-defining declaration of a variable,
+    the location specified supersedes the location specified by the defining
+    declaration but only within the scope of the variable entry; if no location
+    is specified, then the location specified in the defining declaration
+    applies.
+
+    [non-normative] This can occur, for example, for a C or C++ external
+    variable (one that is defined and allocated in another compilation unit) and
+    whose location varies in the current unit due to optimization.
+
+    The location of a variable may be further specified with a DW_AT_segment
+    attribute, if appropriate.
+
+5.  A DW_AT_type attribute describing the type of the variable, constant or
+    formal parameter.
+
+6.  If the variable entry represents the defining declaration for a C++ static
+    data member of a structure, class or union, the entry has a
+    DW_AT_specification attribute, whose value is a reference to the debugging
+    information entry representing the declaration of this data member. The
+    referenced entry also has the tag DW_TAG_variable and will be a child of
+    some class, structure or union type entry.
+
+    If the variable entry represents a non-defining declaration,
+    DW_AT_specification may be used to reference the defining declaration of the
+    variable. If no DW_AT_specification attribute is present, the defining
+    declaration may be found as a global definition either in the current
+    compilation unit or in another compilation unit with the DW_AT_external
+    attribute.
+
+    Variable entries containing the DW_AT_specification attribute do not need to
+    duplicate information provided by the declaration entry referenced by the
+    specification attribute. In particular, such variable entries do not need to
+    contain attributes for the name or type of the data member whose definition
+    they represent.
+
+7.  A DW_AT_variable_parameter attribute, which is a flag, if a formal
+    parameter entry represents a parameter whose value in the calling function
+    may be modified by the callee. The absence of this attribute implies that
+    the parameter's value in the calling function cannot be modified by the
+    callee.
+
+8.  A DW_AT_is_optional attribute, which is a flag, if a parameter entry
+    represents an optional parameter.
+
+9.  A DW_AT_default_value attribute for a formal parameter entry. The value of
+    this attribute may be a constant, or a reference to the debugging
+    information entry for a variable, or a reference to a debugging information
+    entry containing a DWARF procedure. If the attribute form is of class
+    constant, that constant is interpreted as a value whose type is the same as
+    the type of the formal parameter. If the attribute form is of class
+    reference, and the referenced entry is for a variable, the default value of
+    the parameter is the value of the referenced variable. If the reference
+    value is 0, no default value has been specified. Otherwise, the attribute
+    represents an implicit DW_OP_call_ref to the referenced debugging
+    information entry, and the default value of the parameter is the value
+    returned by that DWARF procedure, interpreted as a value of the type of the
+    formal parameter.
+
+    [non-normative] For a constant form there is no way to express the absence
+    of a default value.
+
+10. A DW_AT_const_value attribute for an entry describing a variable or formal
+    parameter whose value is constant and not represented by an object in the
+    address space of the program, or an entry describing a named constant. (Note
+    that such an entry does not have a location attribute.) The value of this
+    attribute may be a string or any of the constant data or data block forms,
+    as appropriate for the representation of the variable's value. The value is
+    the actual constant value of the variable, represented as it would be on the
+    target architecture.
+
+    [non-normative] One way in which a formal parameter with a constant value
+    and no location can arise is for a formal parameter of an inlined subprogram
+    that corresponds to a constant actual parameter of a call that is inlined.
+
+11. A DW_AT_endianity attribute, whose value is a constant that specifies the
+    endianity of the object. The value of this attribute specifies an
+    ABI-defined byte ordering for the value of the object. If omitted, the
+    default endianity of data for the given type is assumed.
+
+    The set of values and their meaning for this attribute is given in Table
+    4.1. These represent the default encoding formats as defined by the target
+    architecture's ABI or processor definition. The exact definition of these
+    formats may differ in subtle ways for different architectures.
+
+    Table 4.1: Endianity attribute values
+    ---------------- ----------------------------------------------------------
+    Name             Meaning
+    ---------------- ----------------------------------------------------------
+    DW_END_default   Default endian encoding (equivalent to the
+                     absence of a DW_AT_endianity attribute)
+    DW_END_big       Big-endian encoding
+    DW_END_little    Little-endian encoding
+    ---------------- ----------------------------------------------------------
+
+12. A DW_AT_const_expr attribute, constant expression attribute which is a flag,
+    if a variable entry represents a C++ object declared with the constexpr
+    specifier. This attribute indicates that the variable can be evaluated as a
+    compile-time constant.
+
+    [non-normative] In C++, a variable declared with constexpr is implicitly
+    const. Such a variable has a DW_AT_type attribute whose value is a reference
+    to a debugging information entry describing a const qualified type.
+
+13. A DW_AT_linkage_name attribute for a variable or constant entry as described
+    in Section 2.22 on page 56.
+
+4.2 Common Block Entries
+
+A Fortran common block may be described by a debugging information entry with
+the tag DW_TAG_common_block.
+
+The common block entry has a DW_AT_name attribute whose value is a
+null-terminated string containing the common block name. It may also have a
+DW_AT_linkage_name attribute as described in Section 2.22 on page 56.
+
+A common block entry also has a DW_AT_location attribute whose value describes
+the location of the beginning of the common block.
+
+The common block entry owns debugging information entries describing the
+variables contained within the common block.
+
+[non-normative] Fortran allows each declarer of a common block to independently
+define its contents; thus, common blocks are not types.
+
+5.1 Base Type Entries
+
+[non-normative] A base type is a data type that is not defined in terms of other
+data types. Each programming language has a set of base types that are
+considered to be built into that language.
+
+A base type is represented by a debugging information entry with the tag
+DW_TAG_base_type.
+
+A base type entry may have a DW_AT_name attribute whose value is a
+null-terminated string containing the name of the base type as recognized by the
+programming language of the compilation unit containing the base type entry.
+
+A base type entry has a DW_AT_encoding attribute describing how the base type is
+encoded and is to be interpreted. The DW_AT_encoding attribute is described in
+Section 5.1.1 following.
+
+A base type entry may have a DW_AT_endianity attribute as described in Section
+4.1 on page 97. If omitted, the encoding assumes the representation that is the
+default for the target architecture.
+
+A base type entry has a DW_AT_byte_size attribute or a DW_AT_bit_size attribute
+whose integer constant value (see Section 2.21 on page 56) is the amount of
+storage needed to hold a value of the type.
+
+[non-normative] For example, the C type int on a machine that uses 32-bit
+integers is represented by a base type entry with a name attribute whose value
+is "int", an encoding attribute whose value is DW_ATE_signed and a byte size
+attribute whose value is 4.
+
+If the value of an object of the given type does not fully occupy the storage
+described by a byte size attribute, the base type entry may also have a
+DW_AT_bit_size and a DW_AT_data_bit_offset attribute, both of whose values are
+integer constant values (see Section 2.19 on page 55). The bit size attribute
+describes the actual size in bits used to represent values of the given type.
+The data bit offset attribute is the offset in bits from the beginning of the
+containing storage to the beginning of the value. Bits that are part of the
+offset are padding. If this attribute is omitted a default data bit offset of
+zero is assumed.
+
+A DW_TAG_base_type entry may have additional attributes that augment certain of
+the base type encodings; these are described in the following section.
+
+5.3 Type Modifier Entries
+
+...
+
+A modified type entry describing a pointer or reference type (using
+DW_TAG_pointer_type, DW_TAG_reference_type or DW_TAG_rvalue_reference_type) may
+have a DW_AT_address_class attribute to describe how objects having the given
+pointer or reference type are dereferenced.
+
+...
+
+5.7.3 Derived or Extended Structures, Classes and Interfaces
+
+[non-normative] In C++, a class (or struct) may be "derived from" or be a
+"subclass of" another class. In Java, an interface may "extend" one or more
+other interfaces, and a class may "extend" another class and/or "implement" one
+or more interfaces. All of these relationships may be described using the
+following. Note that in Java, the distinction between extends and implements is
+implied by the entities at the two ends of the relationship.
+
+A class type or interface type entry that describes a derived, extended or
+implementing class or interface owns debugging information entries describing
+each of the classes or interfaces it is derived from, extending or implementing,
+respectively, ordered as they were in the source program. Each such entry has
+the tag DW_TAG_inheritance.
+
+An inheritance entry has a DW_AT_type attribute whose value is a reference to
+the debugging information entry describing the class or interface from which the
+parent class or structure of the inheritance entry is derived, extended or
+implementing.
+
+An inheritance entry for a class that derives from or extends another class or
+struct also has a DW_AT_data_member_location attribute, whose value describes
+the location of the beginning of the inherited type relative to the beginning
+address of the instance of the derived class. If that value is a constant, it is
+the offset in bytes from the beginning of the class to the beginning of the
+instance of the inherited type. Otherwise, the value must be a location
+description. In this latter case, the beginning address of the instance of the
+derived class is pushed on the expression stack before the location description
+is evaluated and the result of the evaluation is the location of the instance of
+the inherited type.
+
+[non-normative] The interpretation of the value of this attribute for inherited
+types is the same as the interpretation for data members (see Section 5.7.6
+following).
+
+An inheritance entry may have a DW_AT_accessibility attribute. If no
+accessibility attribute is present, private access is assumed for an entry of a
+class and public access is assumed for an entry of a struct, union or interface.
+
+If the class referenced by the inheritance entry serves as a C++ virtual base
+class, the inheritance entry has a DW_AT_virtuality attribute.
+
+[non-normative] For a C++ virtual base, the data member location attribute will
+usually consist of a non-trivial location description.
+
+5.7.8 Member Function Entries
+
+A member function is represented by a debugging information entry with the tag
+DW_TAG_subprogram. The member function entry may contain the same attributes and
+follows the same rules as non-member global subroutine entries (see Section 3.3
+on page 75).
+
+In particular, if the member function entry is an instantiation of a member
+function template, it follows the same rules as function template instantiations
+(see Section 3.3.7 on page 81).
+
+A member function entry may have a DW_AT_accessibility attribute. If no
+accessibility attribute is present, private access is assumed for an entry of a
+class and public access is assumed for an entry of a structure, union or
+interface.
+
+If the member function entry describes a virtual function, then that entry has a
+DW_AT_virtuality attribute.
+
+If the member function entry describes an explicit member function, then that
+entry has a DW_AT_explicit attribute.
+
+An entry for a virtual function also has a DW_AT_vtable_elem_location attribute
+whose value contains a location description yielding the address of the slot for
+the function within the virtual function table for the enclosing class. The
+address of an object of the enclosing type is pushed onto the expression stack
+before the location description is evaluated.
+
+If the member function entry describes a non-static member function, then that
+entry has a DW_AT_object_pointer attribute whose value is a reference to the
+formal parameter entry that corresponds to the object for which the function is
+called. The name attribute of that formal parameter is defined by the current
+language (for example, this for C++ or self for Objective C and some other
+languages). That parameter also has a DW_AT_artificial attribute whose value is
+true.
+
+...
+
+5.14 Pointer to Member Type Entries
+
+[non-normative] In C++, a pointer to a data or function member of a class or
+structure is a unique type.
+
+A debugging information entry representing the type of an object that is a
+pointer to a structure or class member has the tag DW_TAG_ptr_to_member_type.
+
+If the pointer to member type has a name, the pointer to member entry has a
+DW_AT_name attribute, whose value is a null-terminated string containing the
+type name.
+
+The pointer to member entry has a DW_AT_type attribute to describe the type of
+the class or structure member to which objects of this type may point.
+
+The entry also has a DW_AT_containing_type attribute, whose value is a reference
+to a debugging information entry for the class or structure to whose members
+objects of this type may point.
+
+The pointer to member entry has a DW_AT_use_location attribute whose value is a
+location description that computes the address of the member of the class to
+which the pointer to member entry points.
+
+[non-normative] The method used to find the address of a given member of a class
+or structure is common to any instance of that class or structure and to any
+instance of the pointer or member type. The method is thus associated with the
+type entry, rather than with each instance of the type.
+
+The DW_AT_use_location description is used in conjunction with the location
+descriptions for a particular object of the given pointer to member type and for
+a particular structure or class instance. The DW_AT_use_location attribute
+expects two values to be pushed onto the DWARF expression stack before the
+DW_AT_use_location description is evaluated. The first value pushed is the value
+of the pointer to member object itself. The second value pushed is the base
+address of the entire structure or union instance containing the member whose
+address is being calculated.
+
+[non-normative] For an expression such as
+
+    object.*mbr_ptr
+
+[non-normative] where mbr_ptr has some pointer to member type, a debugger
+should:
+
+1.  [non-normative] Push the value of mbr_ptr onto the DWARF expression stack.
+
+2.  [non-normative] Push the base address of object onto the DWARF expression
+    stack.
+
+3.  [non-normative] Evaluate the DW_AT_use_location description given in the
+    type of mbr_ptr.
+
+5.18.1 Data Location
+
+[non-normative] Some languages may represent objects using descriptors to hold
+information, including a location and/or run-time parameters, about the data
+that represents the value for that object.
+
+The DW_AT_data_location attribute may be used with any type that provides one or
+more levels of hidden indirection and/or run-time parameters in its
+representation. Its value is a location description. The result of evaluating
+this description yields the location of the data for an object. When this
+attribute is omitted, the address of the data is the same as the address of the
+object.
+
+[non-normative] This location description will typically begin with
+DW_OP_push_object_address which loads the address of the object which can then
+serve as a descriptor in subsequent calculation. For an example using
+DW_AT_data_location for a Fortran 90 array, see Appendix D.2.1 on page 292.
+
+6.1.1.1 Contents of the Name Index
+
+The name index must contain an entry for each debugging information entry that
+defines a named subprogram, label, variable, type, or namespace, subject to the
+following rules:
+
+  * All non-defining declarations (that is, debugging information entries with a
+    DW_AT_declaration attribute) are excluded.
+
+  * DW_TAG_namespace debugging information entries without a
+    DW_AT_name attribute are included with the name "(anonymous namespace)".
+
+  * All other debugging information entries without a DW_AT_name attribute are
+    excluded.
+
+  * DW_TAG_subprogram, DW_TAG_inlined_subroutine, and DW_TAG_label debugging
+    information entries without an address attribute (DW_AT_low_pc,
+    DW_AT_high_pc, DW_AT_ranges, or DW_AT_entry_pc) are excluded.
+
+  * DW_TAG_variable debugging information entries with a DW_AT_location
+    attribute that includes a DW_OP_addr or DW_OP_form_tls_address operator are
+    included; otherwise, they are excluded.
+
+  * If a subprogram or inlined subroutine is included, and has a
+    DW_AT_linkage_name attribute, there will be an additional index entry for
+    the linkage name.
+
+For the purposes of determining whether a debugging information entry has a
+particular attribute (such as DW_AT_name), if debugging information entry A has
+a DW_AT_specification or DW_AT_abstract_origin attribute pointing to another
+debugging information entry B, any attributes of B are considered to be part of
+A.
+
+[non-normative] The intent of the above rules is to provide the consumer with
+some assurance that looking up an unqualified name in the index will yield all
+relevant debugging information entries that provide a defining declaration at
+global scope for that name.
+
+[non-normative] A producer may choose to implement additional rules for what
+names are placed in the index, and may communicate those rules to a cooperating
+consumer via an augmentation string, described below.
+
+6.4.1 Structure of Call Frame Information
+
+DWARF supports virtual unwinding by defining an architecture independent basis
+for recording how subprograms save and restore registers during their lifetimes.
+This basis must be augmented on some machines with specific information that is
+defined by an architecture specific ABI authoring committee, a hardware vendor,
+or a compiler producer. The body defining a specific augmentation is referred to
+below as the "augmenter."
+
+Abstractly, this mechanism describes a very large table that has the following
+structure:
+
+    LOC CFA R0 R1 ... RN
+    L0
+    L1
+    ...
+    LN
+
+The first column indicates an address for every location that contains code in a
+program. (In shared object files, this is an object-relative offset.) The
+remaining columns contain virtual unwinding rules that are associated with the
+indicated location.
+
+The CFA column defines the rule which computes the Canonical Frame Address
+value; it may be either a register and a signed offset that are added together,
+or a DWARF expression that is evaluated.
+
+The remaining columns are labelled by register number. This includes some
+registers that have special designation on some architectures such as the PC and
+the stack pointer register. (The actual mapping of registers for a particular
+architecture is defined by the augmenter.) The register columns contain rules
+that describe whether a given register has been saved and the rule to find the
+value for the register in the previous frame.
+
+The register rules are:
+
+    undefined
+        A register that has this rule has no recoverable value in the previous
+        frame. (By convention, it is not preserved by a callee.)
+
+    same value
+        This register has not been modified from the previous frame. (By
+        convention, it is preserved by the callee, but the callee has not
+        modified it.)
+
+    offset(N)
+        The previous value of this register is saved at the address CFA+N where
+        CFA is the current CFA value and N is a signed offset.
+
+    val_offset(N)
+        The previous value of this register is the value CFA+N where CFA is the
+        current CFA value and N is a signed offset.
+
+    register(R)
+        The previous value of this register is stored in another register
+        numbered R.
+
+    expression(E)
+        The previous value of this register is located at the address produced
+        by executing the DWARF expression E (see Section 2.5 on page 26).
+
+    val_expression(E)
+        The previous value of this register is the value produced by executing
+        the DWARF expression E (see Section 2.5 on page 26).
+
+    architectural
+        The rule is defined externally to this specification by the augmenter.
+
+[non-normative] This table would be extremely large if actually constructed as
+described. Most of the entries at any point in the table are identical to the
+ones above them. The whole table can be represented quite compactly by recording
+just the differences starting at the beginning address of each subroutine in the
+program.
+
+The virtual unwind information is encoded in a self-contained section called
+.debug_frame. Entries in a .debug_frame section are aligned on a multiple of the
+address size relative to the start of the section and come in two forms: a
+Common Information Entry (CIE) and a Frame Description Entry (FDE).
+
+[non-normative] If the range of code addresses for a function is not contiguous,
+there may be multiple CIEs and FDEs corresponding to the parts of that function.
+
+A Common Information Entry holds information that is shared among many Frame
+Description Entries. There is at least one CIE in every non-empty .debug_frame
+section. A CIE contains the following fields, in order:
+
+1.  length (initial length)
+    A constant that gives the number of bytes of the CIE structure, not
+    including the length field itself (see Section 7.2.2 on page 184). The size
+    of the length field plus the value of length must be an integral multiple of
+    the address size.
+
+2.  CIE_id (4 or 8 bytes, see Section 7.4 on page 196)
+    A constant that is used to distinguish CIEs from FDEs.
+
+3.  version (ubyte)
+    A version number (see Section 7.24 on page 238). This number is specific to
+    the call frame information and is independent of the DWARF version number.
+
+4.  augmentation (sequence of UTF-8 characters)
+    A null-terminated UTF-8 string that identifies the augmentation to this CIE
+    or to the FDEs that use it. If a reader encounters an augmentation string
+    that is unexpected, then only the following fields can be read:
+
+      * CIE: length, CIE_id, version, augmentation
+
+      * FDE: length, CIE_pointer, initial_location, address_range
+
+    If there is no augmentation, this value is a zero byte.
+
+    [non-normative] The augmentation string allows users to indicate that there
+    is additional target-specific information in the CIE or FDE which is needed
+    to virtually unwind a stack frame. For example, this might be information
+    about dynamically allocated data which needs to be freed on exit from the
+    routine.
+
+    [non-normative] Because the .debug_frame section is useful independently of
+    any .debug_info section, the augmentation string always uses UTF-8 encoding.
+
+5.  address_size (ubyte)
+    The size of a target address in this CIE and any FDEs that use it, in bytes.
+    If a compilation unit exists for this frame, its address size must match the
+    address size here.
+
+6.  segment_selector_size (ubyte)
+    The size of a segment selector in this CIE and any FDEs that use it, in
+    bytes.
+
+7.  code_alignment_factor (unsigned LEB128)
+    A constant that is factored out of all advance location instructions (see
+    Section 6.4.2.1 on page 177). The resulting value is (operand *
+    code_alignment_factor).
+
+8.  data_alignment_factor (signed LEB128)
+    A constant that is factored out of certain offset instructions (see Sections
+    6.4.2.2 on page 177 and 6.4.2.3 on page 179). The resulting value is
+    (operand * data_alignment_factor).
+
+9.  return_address_register (unsigned LEB128)
+    An unsigned LEB128 constant that indicates which column in the rule table
+    represents the return address of the function. Note that this column might
+    not correspond to an actual machine register.
+
+10. initial_instructions (array of ubyte)
+    A sequence of rules that are interpreted to create the initial setting of
+    each column in the table.
+
+    The default rule for all columns before interpretation of the initial
+    instructions is the undefined rule. However, an ABI authoring body or a
+    compilation system authoring body may specify an alternate default value for
+    any or all columns.
+
+11. padding (array of ubyte)
+    Enough DW_CFA_nop instructions to make the size of this entry match the
+    length value above.
+
+An FDE contains the following fields, in order:
+
+1.  length (initial length)
+    A constant that gives the number of bytes of the header and instruction
+    stream for this function, not including the length field itself (see Section
+    7.2.2 on page 184). The size of the length field plus the value of length
+    must be an integral multiple of the address size.
+
+2.  CIE_pointer (4 or 8 bytes, see Section 7.4 on page 196)
+    A constant offset into the .debug_frame section that denotes the CIE that is
+    associated with this FDE.
+
+3.  initial_location (segment selector and target address)
+    The address of the first location associated with this table entry. If the
+    segment_selector_size field of this FDE's CIE is non-zero, the initial
+    location is preceded by a segment selector of the given length.
+
+4.  address_range (target address)
+    The number of bytes of program instructions described by this entry.
+
+5.  instructions (array of ubyte)
+    A sequence of table defining instructions that are described in Section
+    6.4.2.
+
+6.  padding (array of ubyte)
+    Enough DW_CFA_nop instructions to make the size of this entry match the
+    length value above.
+
+6.4.2 Call Frame Instructions
+
+Each call frame instruction is defined to take 0 or more operands. Some of the
+operands may be encoded as part of the opcode (see Section 7.24 on page 238).
+The instructions are defined in the following sections.
+
+Some call frame instructions have operands that are encoded as DWARF expressions
+(see Section 2.5.1 on page 26). The following DWARF operators cannot be used in
+such operands:
+
+  * DW_OP_addrx, DW_OP_call2, DW_OP_call4, DW_OP_call_ref, DW_OP_const_type,
+    DW_OP_constx, DW_OP_convert, DW_OP_deref_type, DW_OP_regval_type and
+    DW_OP_reinterpret operators are not allowed in an operand of these
+    instructions because the call frame information must not depend on other
+    debug sections.
+
+  * DW_OP_push_object_address is not meaningful in an operand of these
+    instructions because there is no object context to provide a value to push.
+
+  * DW_OP_call_frame_cfa is not meaningful in an operand of these instructions
+    because its use would be circular.
+
+[non-normative] Call frame instructions to which these restrictions apply
+include DW_CFA_def_cfa_expression, DW_CFA_expression and DW_CFA_val_expression.
+
+6.4.2.1 Row Creation Instructions
+
+...
+
+6.4.2.2 CFA Definition Instructions
+
+1.  DW_CFA_def_cfa
+    The DW_CFA_def_cfa instruction takes two unsigned LEB128 operands
+    representing a register number and a (non-factored) offset. The required
+    action is to define the current CFA rule to use the provided register and
+    offset.
+
+2.  DW_CFA_def_cfa_sf
+    The DW_CFA_def_cfa_sf instruction takes two operands: an unsigned LEB128
+    value representing a register number and a signed LEB128 factored offset.
+    This instruction is identical to DW_CFA_def_cfa except that the second
+    operand is signed and factored. The resulting offset is factored_offset *
+    data_alignment_factor.
+
+3.  DW_CFA_def_cfa_register
+    The DW_CFA_def_cfa_register instruction takes a single unsigned LEB128
+    operand representing a register number. The required action is to define the
+    current CFA rule to use the provided register (but to keep the old offset).
+    This operation is valid only if the current CFA rule is defined to use a
+    register and offset.
+
+4.  DW_CFA_def_cfa_offset
+    The DW_CFA_def_cfa_offset instruction takes a single unsigned LEB128 operand
+    representing a (non-factored) offset. The required action is to define the
+    current CFA rule to use the provided offset (but to keep the old register).
+    This operation is valid only if the current CFA rule is defined to use a
+    register and offset.
+
+5.  DW_CFA_def_cfa_offset_sf
+    The DW_CFA_def_cfa_offset_sf instruction takes a signed LEB128 operand
+    representing a factored offset. This instruction is identical to
+    DW_CFA_def_cfa_offset except that the operand is signed and factored. The
+    resulting offset is factored_offset * data_alignment_factor. This operation
+    is valid only if the current CFA rule is defined to use a register and
+    offset.
+
+6.  DW_CFA_def_cfa_expression
+    The DW_CFA_def_cfa_expression instruction takes a single operand encoded as
+    a DW_FORM_exprloc value representing a DWARF expression. The required action
+    is to establish that expression as the means by which the current CFA is
+    computed.
+
+    [non-normative] See Section 6.4.2 on page 176 regarding restrictions on the
+    DWARF expression operators that can be used.
+
+6.4.2.3 Register Rule Instructions
+
+1.  DW_CFA_undefined
+    The DW_CFA_undefined instruction takes a single unsigned LEB128 operand that
+    represents a register number. The required action is to set the rule for the
+    specified register to "undefined."
+
+2.  DW_CFA_same_value
+    The DW_CFA_same_value instruction takes a single unsigned LEB128 operand
+    that represents a register number. The required action is to set the rule
+    for the specified register to "same value."
+
+3.  DW_CFA_offset
+    The DW_CFA_offset instruction takes two operands: a register number (encoded
+    with the opcode) and an unsigned LEB128 constant representing a factored
+    offset. The required action is to change the rule for the register indicated
+    by the register number to be an offset(N) rule where the value of N is
+    factored offset * data_alignment_factor.
+
+4.  DW_CFA_offset_extended
+    The DW_CFA_offset_extended instruction takes two unsigned LEB128 operands
+    representing a register number and a factored offset. This instruction is
+    identical to DW_CFA_offset except for the encoding and size of the register
+    operand.
+
+5.  DW_CFA_offset_extended_sf
+    The DW_CFA_offset_extended_sf instruction takes two operands: an unsigned
+    LEB128 value representing a register number and a signed LEB128 factored
+    offset. This instruction is identical to DW_CFA_offset_extended except that
+    the second operand is signed and factored. The resulting offset is
+    factored_offset * data_alignment_factor.
+
+6.  DW_CFA_val_offset
+    The DW_CFA_val_offset instruction takes two unsigned LEB128 operands
+    representing a register number and a factored offset. The required action is
+    to change the rule for the register indicated by the register number to be a
+    val_offset(N) rule where the value of N is factored_offset *
+    data_alignment_factor.
+
+7.  DW_CFA_val_offset_sf
+    The DW_CFA_val_offset_sf instruction takes two operands: an unsigned LEB128
+    value representing a register number and a signed LEB128 factored offset.
+    This instruction is identical to DW_CFA_val_offset except that the second
+    operand is signed and factored. The resulting offset is factored_offset *
+    data_alignment_factor.
+
+8.  DW_CFA_register
+    The DW_CFA_register instruction takes two unsigned LEB128 operands
+    representing register numbers. The required action is to set the rule for
+    the first register to be register(R) where R is the second register.
+
+9.  DW_CFA_expression
+    The DW_CFA_expression instruction takes two operands: an unsigned LEB128
+    value representing a register number, and a DW_FORM_block value representing
+    a DWARF expression. The required action is to change the rule for the
+    register indicated by the register number to be an expression(E) rule where
+    E is the DWARF expression. That is, the DWARF expression computes the
+    address. The value of the CFA is pushed on the DWARF evaluation stack prior
+    to execution of the DWARF expression.
+
+    [non-normative] See Section 6.4.2 on page 176 regarding restrictions on the
+    DWARF expression operators that can be used.
+
+10. DW_CFA_val_expression
+    The DW_CFA_val_expression instruction takes two operands: an unsigned LEB128
+    value representing a register number, and a DW_FORM_block value representing
+    a DWARF expression. The required action is to change the rule for the
+    register indicated by the register number to be a val_expression(E) rule
+    where E is the DWARF expression. That is, the DWARF expression computes the
+    value of the given register. The value of the CFA is pushed on the DWARF
+    evaluation stack prior to execution of the DWARF expression.
+
+    [non-normative] See Section 6.4.2 on page 176 regarding restrictions on the
+    DWARF expression operators that can be used.
+
+11. DW_CFA_restore
+    The DW_CFA_restore instruction takes a single operand (encoded with the
+    opcode) that represents a register number. The required action is to change
+    the rule for the indicated register to the rule assigned it by the
+    initial_instructions in the CIE.
+
+12. DW_CFA_restore_extended
+    The DW_CFA_restore_extended instruction takes a single unsigned LEB128
+    operand that represents a register number. This instruction is identical to
+    DW_CFA_restore except for the encoding and size of the register operand.
+
+7.4 32-Bit and 64-Bit DWARF Formats
+
+...
+
+3.  Within the body of the .debug_info section, certain forms of attribute value
+    depend on the choice of DWARF format as follows. For the 32-bit DWARF
+    format, the value is a 4-byte unsigned integer; for the 64-bit DWARF format,
+    the value is an 8-byte unsigned integer.
+
+    ------------------------ ------------------------------
+	Form                     Role
+    ------------------------ ------------------------------
+	DW_FORM_line_strp        offset in .debug_line_str
+	DW_FORM_ref_addr         offset in .debug_info
+	DW_FORM_sec_offset       offset in a section other than
+                             .debug_info or .debug_str
+	DW_FORM_strp             offset in .debug_str
+    DW_FORM_strp_sup         offset in .debug_str section of a
+                             supplementary object file
+    DW_OP_call_ref           offset in .debug_info
+    ------------------------ ------------------------------
+
+...
+
+7.5.4 Attribute Encodings
+
+The encodings for the attribute names are given in Table 7.5 following.
+
+Table 7.5: Attribute encodings
+------------------ ------ -----------------
+Attribute name     Value  Classes
+------------------ ------ -----------------
+...
+------------------ ------ -----------------
+
+7.5.5 Classes and Forms
+
+...
+
+  * reference
+    There are four types of reference.
+
+      - The first type of reference...
+
+      - The second type of reference can identify any debugging information
+        entry within a .debug_info section; in particular, it may refer to an
+        entry in a different compilation unit from the unit containing the
+        reference, and may refer to an entry in a different shared object file.
+        This type of reference (DW_FORM_ref_addr) is an offset from the
+        beginning of the .debug_info section of the target executable or shared
+        object file, or, for references within a supplementary object file, an
+        offset from the beginning of the local .debug_info section; it is
+        relocatable in a relocatable object file and frequently relocated in an
+        executable or shared object file. For references from one shared object
+        or static executable file to another, the relocation and identification
+        of the target object must be performed by the consumer. In the 32-bit
+        DWARF format, this offset is a 4-byte unsigned value; in the 64-bit
+        DWARF format, it is an 8-byte unsigned value (see Section 7.4 on page
+        196).
+
+        [non-normative] A debugging information entry that may be referenced by
+        another compilation unit using DW_FORM_ref_addr must have a global
+        symbolic name.
+
+        [non-normative] For a reference from one executable or shared object
+        file to another, the reference is resolved by the debugger to identify
+        the executable or shared object file and the offset into that file's
+        .debug_info section in the same fashion as the run time loader, either
+        when the debug information is first read, or when the reference is used.
+
+7.7 DWARF Expressions and Location Descriptions
+
+7.7.1 DWARF Expressions
+
+A DWARF expression is stored in a block of contiguous bytes. The bytes form a
+sequence of operations. Each operation is a 1-byte code that identifies that
+operation, followed by zero or more bytes of additional data. The encodings for
+the operations are described in Table 7.9.
+
+Table 7.9: DWARF operation encodings
+------------ ----- --------- ---------------------------
+                   No. of
+Operation    Code  Operands  Notes
+------------ ----- --------- ---------------------------
+...
+------------ ----- --------- ---------------------------
+
+7.7.2 Location Descriptions
+
+A location description is used to compute the location of a variable or other
+entity.
+
+7.7.3 Location Lists
+
+...
+
+7.12 Source Languages
+
+The encodings of the constants used in the DW_AT_language attribute are given in
+Table 7.17. Names marked with † and their associated values are reserved, but
+the languages they represent are not well supported. Table 7.17 also shows the
+default lower bound, if any, assumed for an omitted DW_AT_lower_bound attribute
+in the context of a DW_TAG_subrange_type debugging information entry for each
+defined language.
+
+Table 7.17: Language encodings
+-------------------- ------ -------------------
+Language name        Value  Default Lower Bound
+-------------------- ------ -------------------
+...
+-------------------- ------ -------------------
+
+7.13 Address Class Encodings
+
+The value of the common address class encoding DW_ADDR_none is 0.
+
+7.24 Call Frame Information
+
+In the 32-bit DWARF format, the value of the CIE id in the CIE header is
+0xffffffff; in the 64-bit DWARF format, the value is 0xffffffffffffffff.
+
+The value of the CIE version number is 4.
+
+Call frame instructions are encoded in one or more bytes. The primary opcode is
+encoded in the high order two bits of the first byte (that is, opcode = byte ≫
+6). An operand or extended opcode may be encoded in the low order 6 bits.
+Additional operands are encoded in subsequent bytes. The instructions and their
+encodings are presented in Table 7.29 on the following page.
+
+Table 7.29: Call frame instruction encodings
+--------------------- ------- ------ --------------- ---------------
+                      High 2  Low 6
+Instruction           Bits    Bits   Operand 1       Operand 2
+--------------------- ------- ------ --------------- ---------------
+...
+--------------------- ------- ------ --------------- ---------------
+
+7.32 Type Signature Computation
+
+Table 7.32: Attributes used in type signature computation
+---------------------------------------------------------
+...
+---------------------------------------------------------
+
+Appendix A
+
+Attributes by Tag Value (Informative)
+
+...
+
+Table A.1: Attributes by tag value
+------------------------------ -------------------------------------
+TAG name                       Applicable attributes
+------------------------------ -------------------------------------
+...
+------------------------------ -------------------------------------
+
+Appendix D
+
+Examples (Informative)
+
+D.1.3 DWARF Location Description Examples
+
+...
+
+DW_OP_plus_uconst 4
+    A structure member is four bytes from the start of the structure instance.
+    The base address is assumed to be already on the stack.
+
+...
+
+DW_OP_entry_value 1 DW_OP_reg5 DW_OP_plus_uconst 16
+    The address of the memory location is calculated by adding 16 to the value
+    contained in register 5 upon entering the current subprogram.
+
+    [non-normative] Note that unlike the previous DW_OP_entry_value examples,
+    this one does not end with DW_OP_stack_value.
+
+...
+
+D.2.1 Fortran Simple Array Example
+
+...
+
+-------------------------------------------------------------------------------
+! Description for type of 'ap'
+!
+1$: DW_TAG_array_type
+        ! No name, default (Fortran) ordering, default stride
+        DW_AT_type(reference to REAL)
+        DW_AT_associated(expression=    ! Test 'ptr_assoc' flag
+            DW_OP_push_object_address
+            DW_OP_lit<n>                ! where n == offset(ptr_assoc)
+            DW_OP_plus
+            DW_OP_deref
+            DW_OP_lit1                  ! mask for 'ptr_assoc' flag
+            DW_OP_and)
+        DW_AT_data_location(expression= ! Get raw data address
+            DW_OP_push_object_address
+            DW_OP_lit<n>                ! where n == offset(base)
+            DW_OP_plus
+            DW_OP_deref)                ! Type of index of array 'ap'
+2$:     DW_TAG_subrange_type
+            ! No name, default stride
+            DW_AT_type(reference to INTEGER)
+            DW_AT_lower_bound(expression=
+                DW_OP_push_object_address
+                DW_OP_lit<n>            ! where n ==
+                                        !   offset(desc, dims) +
+                                        !   offset(dims_str, lower_bound)
+                DW_OP_plus
+                DW_OP_deref)
+            DW_AT_upper_bound(expression=
+                DW_OP_push_object_address
+                DW_OP_lit<n>            ! where n ==
+                                        !   offset(desc, dims) +
+                                        !   offset(dims_str, upper_bound)
+                DW_OP_plus
+                DW_OP_deref)
+!  Note: for the m'th dimension, the second operator becomes
+!  DW_OP_lit<n> where
+!       n == offset(desc, dims)          +
+!                (m-1)*sizeof(dims_str)  +
+!                 offset(dims_str, [lower|upper]_bound)
+!  That is, the expression does not get longer for each successive
+!  dimension (other than to express the larger offsets involved).
+3$: DW_TAG_structure_type
+        DW_AT_name("array_ptr")
+        DW_AT_byte_size(constant sizeof(REAL) + sizeof(desc<1>))
+4$:     DW_TAG_member
+            DW_AT_name("myvar")
+            DW_AT_type(reference to REAL)
+            DW_AT_data_member_location(constant 0)
+5$:     DW_TAG_member
+            DW_AT_name("ap");
+            DW_AT_type(reference to 1$)
+            DW_AT_data_member_location(constant sizeof(REAL))
+6$: DW_TAG_array_type
+        ! No name, default (Fortran) ordering, default stride
+        DW_AT_type(reference to 3$)
+        DW_AT_allocated(expression=       ! Test 'ptr_alloc' flag
+            DW_OP_push_object_address
+            DW_OP_lit<n>                  ! where n == offset(ptr_alloc)
+            DW_OP_plus
+            DW_OP_deref
+            DW_OP_lit2                    ! Mask for 'ptr_alloc' flag
+            DW_OP_and)
+        DW_AT_data_location(expression=   ! Get raw data address
+            DW_OP_push_object_address
+            DW_OP_lit<n>                  ! where n == offset(base)
+            DW_OP_plus
+            DW_OP_deref)
+7$:     DW_TAG_subrange_type
+            ! No name, default stride
+            DW_AT_type(reference to INTEGER)
+            DW_AT_lower_bound(expression=
+                DW_OP_push_object_address
+                DW_OP_lit<n>              ! where n == ...
+                DW_OP_plus
+                DW_OP_deref)
+            DW_AT_upper_bound(expression=
+                DW_OP_push_object_address
+                DW_OP_lit<n>              ! where n == ...
+                DW_OP_plus
+                DW_OP_deref)
+8$: DW_TAG_variable
+        DW_AT_name("arrayvar")
+        DW_AT_type(reference to 6$)
+        DW_AT_location(expression=
+            ...as appropriate...)         ! Assume static allocation
+-------------------------------------------------------------------------------
+Figure D.4: Fortran array example: DWARF description
+
+...
+
+D.2.3 Fortran 2008 Assumed-rank Array Example
+
+...
+
+----------------------------------------------------------------------------
+10$:  DW_TAG_array_type
+        DW_AT_type(reference to real)
+        DW_AT_rank(expression=
+            DW_OP_push_object_address
+            DW_OP_lit<n>
+            DW_OP_plus
+            DW_OP_deref)
+        DW_AT_data_location(expression=
+            DW_OP_push_object_address
+            DW_OP_lit<n>
+            DW_OP_plus
+            DW_OP_deref)
+11$:     DW_TAG_generic_subrange
+            DW_AT_type(reference to integer)
+            !   offset of rank in descriptor
+            !   offset of data in descriptor
+            DW_AT_lower_bound(expression=
+            !   Looks up the lower bound of dimension i.
+            !   Operation                       ! Stack effect
+            !   (implicit)                      ! i
+                DW_OP_lit<n>                    ! i sizeof(dim)
+                DW_OP_mul                       ! dim[i]
+                DW_OP_lit<n>                    ! dim[i] offsetof(dim)
+                DW_OP_plus                      ! dim[i]+offset
+                DW_OP_push_object_address       ! dim[i]+offsetof(dim) objptr
+                DW_OP_plus                      ! objptr.dim[i]
+                DW_OP_lit<n>                    ! objptr.dim[i] offsetof(lb)
+                DW_OP_plus                      ! objptr.dim[i].lowerbound
+                DW_OP_deref)                    ! *objptr.dim[i].lowerbound
+            DW_AT_upper_bound(expression=
+            !   Looks up the upper bound of dimension i.
+                DW_OP_lit<n>                    ! sizeof(dim)
+                DW_OP_mul
+                DW_OP_lit<n>                    ! offsetof(dim)
+                DW_OP_plus
+                DW_OP_push_object_address
+                DW_OP_plus
+                DW_OP_lit<n>                    ! offset of upperbound in dim
+                DW_OP_plus
+                DW_OP_deref)
+            DW_AT_byte_stride(expression=
+            !   Looks up the byte stride of dimension i.
+                ...
+            !   (analogous to DW_AT_upper_bound)
+                )
+----------------------------------------------------------------------------
+Figure D.13: Sample DWARF for the array descriptor in Figure D.12
+
+...
+
+D.2.6 Ada Example
+
+...
+
+----------------------------------------------------------------------------
+11$:  DW_TAG_variable
+          DW_AT_name("M")
+          DW_AT_type(reference to INTEGER)
+12$:  DW_TAG_array_type
+          ! No name, default (Ada) order, default stride
+          DW_AT_type(reference to INTEGER)
+13$:      DW_TAG_subrange_type
+              DW_AT_type(reference to INTEGER)
+              DW_AT_lower_bound(constant 1)
+              DW_AT_upper_bound(reference to variable M at 11$)
+14$:  DW_TAG_variable
+          DW_AT_name("VEC1")
+          DW_AT_type(reference to array type at 12$)
+      ...
+21$:  DW_TAG_subrange_type
+          DW_AT_name("TEENY")
+          DW_AT_type(reference to INTEGER)
+          DW_AT_lower_bound(constant 1)
+          DW_AT_upper_bound(constant 100)
+      ...
+26$:  DW_TAG_structure_type
+          DW_AT_name("REC2")
+27$:      DW_TAG_member
+              DW_AT_name("N")
+              DW_AT_type(reference to subtype TEENY at 21$)
+              DW_AT_data_member_location(constant 0)
+28$:      DW_TAG_array_type
+              ! No name, default (Ada) order, default stride
+              ! Default data location
+              DW_AT_type(reference to INTEGER)
+29$:          DW_TAG_subrange_type
+                  DW_AT_type(reference to subrange TEENY at 21$)
+                  DW_AT_lower_bound(constant 1)
+                  DW_AT_upper_bound(reference to member N at 27$)
+30$:      DW_TAG_member
+              DW_AT_name("VEC2")
+              DW_AT_type(reference to array "subtype" at 28$)
+              DW_AT_data_member_location(machine=
+                  DW_OP_lit<n>                ! where n == offset(REC2, VEC2)
+                  DW_OP_plus)
+      ...
+41$:  DW_TAG_variable
+          DW_AT_name("OBJ2B")
+          DW_AT_type(reference to REC2 at 26$)
+          DW_AT_location(...as appropriate...)
+----------------------------------------------------------------------------
+Figure D.20: Ada example: DWARF description
