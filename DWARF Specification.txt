@@ -438,11 +438,8 @@ expression.
     compilation unit. The DW_OP_call_ref operator has a single operand. In the
     32-bit DWARF format, the operand is a 4-byte unsigned value; in the 64-bit
     DWARF format, it is an 8-byte unsigned value (see Section 7.4 following).
-    The operand is used as the offset of a debugging information entry in a
-    .debug_info section which may be contained in an executable or shared object
-    file other than that containing the operator. For references from one
-    executable or shared object file to another, the relocation must be
-    performed by the consumer.
+    The operand is used as the offset of a debugging information entry in the
+    .debug_info section of the current executable or shared object file.
 
     [non-normative] Operand interpretation of DW_OP_call2, DW_OP_call4 and
     DW_OP_call_ref is exactly like that for DW_FORM_ref2, DW_FORM_ref4 and
@@ -650,13 +647,9 @@ locations and values in the program.
     and a signed number that is treated as a byte offset from the start of that
     value. The first operand is a 4-byte unsigned value in the 32-bit DWARF
     format, or an 8-byte unsigned value in the 64-bit DWARF format (see Section
-    7.4 on page 196). The second operand is a signed LEB128 number.
-
-    The first operand is used as the offset of a debugging information entry in
-    a .debug_info section, which may be contained in an executable or shared
-    object file other than that containing the operator. For references from one
-    executable or shared object file to another, the relocation must be
-    performed by the consumer.
+    7.4 on page 196) that is used as the offset of a debugging information entry
+    in the .debug_info section of the current executable or shared object file.
+    The second operand is a signed LEB128 number.
 
     [non-normative] The debugging information entry referenced by a
     DW_OP_implicit_pointer operation is typically a DW_TAG_variable or
@@ -1828,12 +1821,9 @@ Attribute name     Value  Classes
         object file, or, for references within a supplementary object file, an
         offset from the beginning of the local .debug_info section; it is
         relocatable in a relocatable object file and frequently relocated in an
-        executable or shared object file. For references from one shared object
-        or static executable file to another, the relocation and identification
-        of the target object must be performed by the consumer. In the 32-bit
-        DWARF format, this offset is a 4-byte unsigned value; in the 64-bit
-        DWARF format, it is an 8-byte unsigned value (see Section 7.4 on page
-        196).
+        executable or shared object file. In the 32-bit DWARF format, this
+        offset is a 4-byte unsigned value; in the 64-bit DWARF format, it is an
+        8-byte unsigned value (see Section 7.4 on page 196).
 
         [non-normative] A debugging information entry that may be referenced by
         another compilation unit using DW_FORM_ref_addr must have a global
