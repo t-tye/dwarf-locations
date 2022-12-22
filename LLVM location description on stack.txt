@@ -10,7 +10,7 @@ The attributes are listed in Table 2.2 following.
 Table 2.2: Attribute names
 
 ----------------------- -------------------------------------------------------
-Attribute               Usage
+Attribute*              Usage
 ----------------------- -------------------------------------------------------
 DW_AT_abstract_origin   Inline instances of inline subprograms
                         Out-of-line instances of inline subprograms
@@ -38,6 +38,19 @@ DWARF expression is ill-formed.
 
 If the evaluation of a DWARF expression encounters an evaluation error, then the
 result is an evaluation error.
+
+> NOTE: Decided to define the concept of an evaluation error. An alternative is
+> to introduce an undefined value base type in a similar way to location
+> descriptions having an undefined location description. Then operations that
+> encounter an evaluation error can return the undefined location description or
+> value with an undefined base type.
+>
+> All operations that act on values would return an undefined entity if given an
+> undefined value. The expression would then always evaluate to completion, and
+> can be tested to determine if it is an undefined entity.
+>
+> However, this would add considerable additional complexity and does not match
+> that GDB throws an exception when these evaluation errors occur.
 
 If a DWARF expression is ill-formed, then the result is undefined.
 
@@ -110,7 +123,7 @@ elements that can be specified are:
 
       * If the current call frame is the top call frame, it must be the current
         target architecture program location.
-
+ 
       * If the current call frame F is not the top call frame, it must be the
         program location associated with the call site in the current caller
         frame F that invoked the callee frame.
@@ -173,7 +186,7 @@ elements that can be specified are:
         current program location in the .debug_addr, .debug_line,
         .debug_rnglists, .debug_rnglists.dwo, .debug_loclists, and
         .debug_loclists.dwo sections.
- 
+  
       * Otherwise the result is undefined.
 
 7.  A current object
@@ -220,12 +233,20 @@ The DWARF is ill-formed if all the address_size fields in the headers of all the
 entries in the .debug_info, .debug_addr, .debug_line, .debug_rnglists,
 .debug_rnglists.dwo, .debug_loclists, and .debug_loclists.dwo sections
 corresponding to any given program location do not match.
- 
+
 2.5.2 DWARF Expression Value
 
 A value has a type and a literal value. It can represent a literal value of any
 supported base type of the target architecture. The base type specifies the
 size, encoding, and endianity of the literal value.
+
+> [For further discussion...]
+> It may be desirable to add an implicit pointer base type encoding. It would be
+> used for the type of the value that is produced when the DW_OP_deref*
+> operation retrieves the full contents of an implicit pointer location storage
+> created by the DW_OP_implicit_pointer operation. The literal value would
+> record the debugging information entry and byte displacement specified by the
+> associated DW_OP_implicit_pointer operation.
 
 There is a distinguished base type termed the generic type, which is an integral
 type that has the size of an address in the target architecture default address
@@ -240,13 +261,6 @@ any target architecture defined integral encoding in the inclusive range
 DW_ATE_lo_user to DW_ATE_hi_user.
 
 > [For further discussion...]
-> It may be desirable to add an implicit pointer base type encoding. It would
-> be used for the type of the value that is produced when the DW_OP_deref*
-> operation retrieves the full contents of an implicit pointer location storage
-> created by the DW_OP_implicit_pointer operation. The literal value would
-> record the debugging information entry and byte displacement specified by the
-> associated DW_OP_implicit_pointer operation.
->
 > It is unclear if DW_ATE_address is an integral type. GDB does not seem to
 > consider it as integral.
 
@@ -254,8 +268,8 @@ DW_ATE_lo_user to DW_ATE_hi_user.
 
 [non-normative] Debugging information must provide consumers a way to find the
 location of program variables, determine the bounds of dynamic arrays and
-strings, and possibly to find the base address of a subroutine’s stack frame or
-the return address of a subroutine. Furthermore, to meet the needs of recent
+strings, and possibly to find the base address of a subprogram's call frame or
+the return address of a subprogram. Furthermore, to meet the needs of recent
 computer architectures and optimization techniques, debugging information must
 be able to describe the location of an object whose location changes over the
 object's lifetime, and may reside at multiple locations simultaneously during
@@ -301,10 +315,10 @@ There are five kinds of location storage:
     some from another location storage, or from disjoint parts of the same
     location storage.
 
-    > [For further discussion...]
-    > It may be better to add an implicit pointer location storage kind used by
-    > the DW_OP_implicit_pointer operation. It would specify the debugger
-    > information entry and byte offset provided by the operations.
+> [For further discussion...]
+> It may be better to add an implicit pointer location storage kind used by
+> the DW_OP_implicit_pointer operation. It would specify the debugger
+> information entry and byte offset provided by the operations.
 
 [non-normative] Location descriptions are a language independent representation
 of addressing rules.
@@ -421,7 +435,7 @@ Operations can act on entries on the stack, including adding entries and
 removing entries.
 
 If the kind of a stack entry does not match the kind required by the operation
-and is not implicitly convertible to the required kind (see 2.x.x.x Memory
+and is not implicitly convertible to the required kind (see 2.5.4.4.3 Memory
 Location Description Operations), then the DWARF operation expression is
 ill-formed.
 
@@ -436,37 +450,37 @@ The result of the evaluation is:
   * If an operation has an evaluation error, or an operation evaluates an
     expression that has an evaluation error, then the result is an evaluation
     error.
-  
+
   * If the current result kind specifies a location description, then:
-  
+
       * If the stack is empty, the result is a location description with one
         undefined location description.
 
         [non-normative] This rule is for backwards compatibility with DWARF
         Version 5 which uses an empty operation expression for this purpose.
-  
+
       * If the top stack entry is a location description, or can be converted
         to one (see 2.5.4.4.3 Memory Location Description Operations), then the
         result is that, possibly converted, location description. Any other
         entries on the stack are discarded.
-  
+
       * Otherwise the DWARF expression is ill-formed.
-  
-      > [For further discussion...]
-      > Could define this case as returning an implicit location description as
-      > if the DW_OP_implicit operation is performed.
-  
+
+        > [For further discussion...]
+        > Could define this case as returning an implicit location description as
+        > if the DW_OP_implicit operation is performed.
+
   * If the current result kind specifies a value, then:
-  
+
       * If the top stack entry is a value, or can be converted to one (see
         2.5.4.4.3 Memory Location Description Operations), then the result is
         that, possibly converted, value. Any other entries on the stack are
         discarded.
 
       * Otherwise the DWARF expression is ill-formed.
-  
+
   * If the current result kind is not specified, then:
-  
+
       * If the stack is empty, the result is a location description with one
         undefined location description.
 
@@ -477,7 +491,7 @@ The result of the evaluation is:
         > This rule is consistent with the rule above for when a location
         > description is requested. However, GDB appears to report this as an
         > error and no GDB tests appear to cause an empty stack for this case.
-  
+
       * Otherwise, the top stack entry is returned. Any other entries on the
         stack are discarded.
 
@@ -485,14 +499,14 @@ An operation expression is encoded as a byte block with some form of prefix that
 specifies the byte count. It can be used:
 
   * as the value of a debugging information entry attribute that is encoded
-    using class exprloc (see 7.5.5 Classes and Forms).
+    using class exprloc (see 7.5.5 Classes and Forms),
 
-  * as the operand to certain operation expression operations.
+  * as the operand to certain operation expression operations,
 
   * as the operand to certain call frame information operations (see 6.4 Call
-    Frame Information).
+    Frame Information),
 
-  * in location list entries (see 2.5.x DWARF Location List Expressions).
+  * and in location list entries (see 2.5.5 DWARF Location List Expressions).
 
 2.5.4.1 Stack Operations
 
@@ -501,10 +515,13 @@ stack assume that the top of the stack (most recently added entry) has index 0.
 They allow the stack entries to be either a value or location description.
 
 If any stack entry accessed by a stack operation is an incomplete composite
-location description (see 2.x.x Composite Location Description Operations), then
+location description (see 2.5.4.4.6 Composite Location Description Operations), then
 the DWARF expression is ill-formed.
 
 > [For further discussion...]
+> These operations now support stack entries that are values and location
+> descriptions.
+>
 > If it is desired to also make them work with incomplete composite location
 > descriptions, then would need to define that the composite location storage
 > specified by the incomplete composite location description is also replicated
@@ -536,9 +553,6 @@ the DWARF expression is ill-formed.
     DW_OP_rot rotates the first three stack entries. The entry at the top of
     the stack becomes the third stack entry, the second entry becomes the top of
     the stack, and the third entry becomes the second entry.
-
-[non-normative] Examples illustrating many of these stack operations are found
-in Appendix D.1.2 on page 289.
 
 2.5.4.2 Control Flow Operations
 
@@ -606,6 +620,31 @@ expression.
     the beginning of the .debug_info section that contains the current
     compilation unit. D may not be in the current compilation unit.
 
+    > [For further discussion...]
+    > DWARF Version 5 states that DR can be an offset in a .debug_info section
+    > other than the one that contains the current compilation unit. It states
+    > that relocation of references from one executable or shared object file
+    > to another must be performed by the consumer. But given that DR is
+    > defined as an offset in a .debug_info section this seems impossible. If
+    > DR was defined as an implementation defined value, then the consumer
+    > could choose to interpret the value in an implementation defined manner
+    > to reference a debug information in another executable or shared object.
+    >
+    > In ELF the .debug_info section is in a non-PT_LOAD segment so standard
+    > dynamic relocations cannot be used. But even if they were loaded segments
+    > and dynamic relocations were used, DR would need to be the address of D,
+    > not an offset in a .debug_info section. That would also need DR to be
+    > the size of a global address. So it would not be possible to use the
+    > 32-bit DWARF format in a 64-bit global address space. In addition, the
+    > consumer would need to determine what executable or shared object the
+    > relocated address was in so it could determine the containing compilation
+    > unit.
+    >
+    > GDB only interprets DR as an offset in the .debug_info section that
+    > contains the current compilation unit.
+    >
+    > This comment also applies to DW_OP_implicit_pointer.
+
     [non-normative] Operand interpretation of DW_OP_call2, DW_OP_call4, and
     DW_OP_call_ref is exactly like that for DW_FORM_ref2, DW_FORM_ref4, and
     DW_FORM_ref_addr, respectively.
@@ -624,19 +663,19 @@ expression.
         left by the evaluation of the operations of E. Since E is evaluated on
         the same stack as the call operation, E can use, and/or remove entries
         already on the stack, and can add new entries to the stack.
-
+  
         [non-normative] Values on the stack at the time of the call may be used
         as parameters by the called expression and values left on the stack by
         the called expression may be used as return values by prior agreement
         between the calling and called expressions.
-
+  
       * If D has a DW_AT_location attribute that is encoded as a loclist or
         loclistsptr, then the specified location list expression E is evaluated.
         The evaluation of E uses the current context, except the result kind is
         a location description, the compilation unit is the one that contains D,
         and the initial stack is empty. The location description result is
         pushed on the stack.
-
+  
         > [For further discussion...]
         > This rule avoids having to define how to execute a matched location
         > list entry operation expression on the same stack as the call when
@@ -709,24 +748,24 @@ expression.
         > context, except the result kind is a location description, the
         > compilation unit is the one that contains D, and the initial stack is
         > empty. The location description result is pushed on the stack.
-
+  
       * If D has a DW_AT_const_value attribute with a value V, then it is as if
         a DW_OP_implicit_value V operation was executed.
-
+  
         [non-normative] This allows a call operation to be used to compute the
         location description for any variable or formal parameter regardless of
         whether the producer has optimized it to a constant. This is consistent
         with the DW_OP_implicit_pointer operation.
-
+  
         > [For further discussion...]
         > Alternatively, could deprecate using DW_AT_const_value for
         > DW_TAG_variable and DW_TAG_formal_parameter debugger information
         > entries that are constants and instead use DW_AT_location with an
         > operation expression that results in a location description with one
         > implicit location description. Then this rule would not be required.
-
+  
       * Otherwise, there is no effect and no changes are made to the stack.
-
+  
     > [For further discussion...]
     > In DWARF Version 5, if D does not have a DW_AT_location then DW_OP_call*
     > is defined to have no effect. It is unclear that this is the right
@@ -736,7 +775,7 @@ expression.
     > DW_OP_call* to a DW_TAG_dwarf_procedure that does not have a
     > DW_AT_location attribute. So, should this case be defined as an ill-formed
     > DWARF expression?
-
+  
     [non-normative] The DW_TAG_dwarf_procedure debugging information entry can
     be used to define DWARF procedures that can be called.
 
@@ -1044,7 +1083,7 @@ There are these special value operations currently defined:
     undefined location storage or the offset of any bit exceeds the size of the
     location storage LS specified by any single location description SL of L.
 
-    See 2.5.x.x Implicit Location Description Operations for special rules
+    See 2.5.4.4.5 Implicit Location Description Operations for special rules
     concerning implicit location descriptions created by the
     DW_OP_implicit_pointer operation.
 
@@ -1122,14 +1161,14 @@ There are these special value operations currently defined:
     is a block of bytes, with a length equal S, interpreted as a DWARF operation
     expression E.
 
-    E is evaluated with the current context, with the following modifications: the result kind is
+    E is evaluated with the current context, except the result kind is
     unspecified, the call frame is the one that called the current frame, the
     program location is the call site in the calling frame, the object is
     unspecified, and the initial stack is empty. The calling frame information
     is obtained by virtually unwinding the current call frame using the call
     frame information (see 6.4 Call Frame Information).
 
-    If the result of E is a location description L (see 2.5.x.x Register
+    If the result of E is a location description L (see 2.5.4.4.4 Register
     Location Description Operations), and the last operation executed by E is a
     DW_OP_reg* for register R with a target architecture specific base type of
     T, then the contents of the register are retrieved as if a DW_OP_deref_type
@@ -1147,6 +1186,18 @@ There are these special value operations currently defined:
     If the result of E is a value V, then V is pushed on the stack.
 
     Otherwise, the DWARF expression is ill-formed.
+
+    [non-normative] The DW_OP_entry_value operation is deprecated as its main
+    usage is provided by other means. DWARF Version 5 added the
+    DW_TAG_call_site_parameter debugger information entry for call sites that
+    has DW_AT_call_value, DW_AT_call_data_location, and DW_AT_call_data_value
+    attributes that provide DWARF expressions to compute actual parameter values
+    at the time of the call, and requires the producer to ensure the expressions
+    are valid to evaluate even when virtually unwound.
+
+    > [For further discussion...]
+    > GDB only implements DW_OP_entry_value when E is exactly DW_OP_reg* or
+    > DW_OP_breg*; DW_OP_deref*.
 
 2.5.4.4 Location Description Operations
 
@@ -1247,6 +1298,8 @@ description SL is defined to be a memory byte address location description. It
 has a byte address equal to A and an address space equal to AS of the
 corresponding SL.
 
+DW_ASPACE_none is defined as the target architecture default address space.
+
 If a stack entry is required to be a location description, but it is a value V
 with the generic type, then it is implicitly converted to a location description
 L with one memory location description SL. SL specifies the memory location
@@ -1333,20 +1386,21 @@ type.
     [non-normative] Some implementations of C, C++, Fortran, and other
     languages, support a thread-local storage class. Variables with this storage
     class have distinct values and addresses in distinct threads, much as
-    automatic variables have distinct values and addresses in each function
+    automatic variables have distinct values and addresses in each subprogram
     invocation. Typically, there is a single block of storage containing all
     thread-local variables declared in the main executable, and a separate block
     for the variables declared in each shared library. Each thread-local
     variable can then be accessed in its block using an identifier. This
-    identifier is typically an offset into the block and pushed onto the DWARF
-    stack by one of the DW_OP_const<n><x> operations prior to the
+    identifier is typically a byte offset into the block and pushed onto the
+    DWARF stack by one of the DW_OP_const<n><x> operations prior to the
     DW_OP_form_tls_address operation. Computing the address of the appropriate
     block can be complex (in some cases, the compiler emits a function call to
     do it), and difficult to describe using ordinary DWARF location
     descriptions. Instead of forcing complex thread-local storage calculations
     into the DWARF expressions, the DW_OP_form_tls_address allows the consumer
-    to perform the computation based on the run-time environment.
- 
+    to perform the computation based on the target architecture specific
+    run-time environment.
+
 4.  DW_OP_call_frame_cfa
     DW_OP_call_frame_cfa pushes the location description L of the Canonical
     Frame Address (CFA) of the current subprogram, obtained from the call frame
@@ -1364,10 +1418,10 @@ type.
     DW_OP_fbreg has a single signed LEB128 integer operand that represents a
     byte displacement B.
 
-    The location description L for the <i>frame base</i> of the current
-    subprogram is obtained from the DW_AT_frame_base attribute of the debugger
-    information entry corresponding to the current subprogram as described in
-    3.3.5 Low-Level Information.
+    The location description L for the frame base of the current subprogram is
+    obtained from the DW_AT_frame_base attribute of the debugger information
+    entry corresponding to the current subprogram as described in 3.3.5
+    Low-Level Information.
 
     The location description L is updated by bit offset B scaled by 8 (the byte
     size) and pushed on the stack.
@@ -1417,9 +1471,9 @@ register location description access the corresponding target architecture
 register starting at the specified bit offset.
 
 1.  DW_OP_reg0, DW_OP_reg1, ..., DW_OP_reg31
-    The DW_OP_reg<n> operations encode the numbers of up to 32 registers,
-    numbered from 0 through 31, inclusive. The target architecture register
-    number R corresponds to the N in the operation name.
+    DW_OP_reg<n> operations encode the numbers of up to 32 registers, numbered
+    from 0 through 31, inclusive. The target architecture register number R
+    corresponds to the N in the operation name.
 
     The operation is equivalent to performing DW_OP_regx R.
 
@@ -1478,7 +1532,7 @@ implicit storage value starting at the bit offset.
     DW_OP_stack_value pops one stack entry that must be a value V.
 
     An implicit location storage LS is created with the literal value V using
-    the size, encoding, and endianity specified by V’s base type.
+    the size, encoding, and enianity specified by V’s base type.
 
     It pushes a location description L with one implicit location description SL
     on the stack. SL specifies LS with a bit offset of 0.
@@ -1559,9 +1613,9 @@ implicit storage value starting at the bit offset.
     space, then T is the generic type. Otherwise, T is a target architecture
     specific integral type with a bit size equal to S.
 
-    If IPV is implicitly converted to a location description (only done if AS is
-    the target architecture default address space), then the resulting location
-    description RL is:
+    If IPV is either implicitly converted to a location description (only done
+    if AS is the target architecture default address space), then the resulting
+    location description RL is:
 
       * If D has a DW_AT_location attribute, the DWARF expression E from the
         DW_AT_location attribute is evaluated with the current context, except
@@ -1689,14 +1743,14 @@ defined to be compatible with the definitions in DWARF Version 5.
 
       * If the stack is empty, then a location description L comprised of one
         incomplete composite location description SL is pushed on the stack.
-
+  
         An incomplete composite location storage LS is created with a single
         part P. P specifies a location description PL and has a bit size of S
         scaled by 8 (the byte size). PL is comprised of one undefined location
         description PSL.
-
+  
         SL specifies LS with a bit offset of 0.
-
+  
       * Otherwise, if the top stack entry is a location description L comprised
         of one incomplete composite location description SL, then the incomplete
         composite location storage LS that SL specifies is updated to append a
@@ -1707,7 +1761,7 @@ defined to be compatible with the definitions in DWARF Version 5.
       * Otherwise, if the top stack entry is a location description or can be
         converted to one, then it is popped and treated as a part location
         description PL. Then:
-
+  
           * If the top stack entry (after popping PL) is a location description
             L comprised of one incomplete composite location description SL,
             then the incomplete composite location storage LS that SL specifies
@@ -1717,13 +1771,13 @@ defined to be compatible with the definitions in DWARF Version 5.
 
           * Otherwise, a location description L comprised of one incomplete
             composite location description SL is pushed on the stack.
-
+  
             An incomplete composite location storage LS is created with a single
             part P. P specifies the location description PL and has a bit size
             of S scaled by 8 (the byte size).
-
+  
             SL specifies LS with a bit offset of 0.
-
+  
       * Otherwise, the DWARF expression is ill-formed
 
     [non-normative] Many compilers store a single variable in sets of registers
@@ -1796,8 +1850,7 @@ location list entry is one of the following kinds:
     address of a bounded location description entry is the address specified by
     the closest preceding base address entry in the same location list. If there
     is no preceding base address entry, then the applicable base address
-    defaults to the base address of the compilation unit (see Section 3.1.1 on
-    page 60).
+    defaults to the base address of the compilation unit (see section 3.1.1).
 
     In the case of a compilation unit where all of the machine code is contained
     in a single contiguous section, no base address entry is needed.
@@ -1826,16 +1879,16 @@ The result of the evaluation of a DWARF location list expression is:
     > non-default entries then it seems it has to be an evaluation error when
     > there is no program location as that indicates the location depends on the
     > program location which is not known.
-
+  
   * If there are no matching location list entries, then the result is a
     location description that comprises one undefined location description.
-
+  
   * Otherwise, the operation expression E of each matching location list entry
     is evaluated with the current context, except that the result kind is a
     location description, the object is unspecified, and the initial stack is
     empty. The location list entry result is the location description returned
     by the evaluation of E.
-
+  
     The result is a location description that is comprised of the union of the
     single location descriptions of the location description result of each
     matching location list entry.
@@ -1990,6 +2043,10 @@ Language name      Meaning
 ...
 ------------------ ---------------------
 
+3 Program Scope Entries
+
+3.3 Subroutine and Entry Point Entries
+
 3.3.5 Low-Level Information
 
 A DW_TAG_subprogram, DW_TAG_inlined_subroutine, or DW_TAG_entry_point debugger
@@ -2042,7 +2099,7 @@ DW_OP_breg* 0.
 Otherwise, the DWARF is ill-formed if SL is not a memory location description in
 any of the target architecture specific address spaces.
 
-The resulting L is the <i>frame base</i> for the subprogram or entry point.
+The resulting L is the frame base for the subprogram or entry point.
 
 [non-normative] Typically, E will use the DW_OP_call_frame_cfa operation or be a
 stack pointer register plus or minus some offset.
@@ -2073,9 +2130,9 @@ a result kind of a location description, an unspecified object, the compilation
 unit that contains E, an empty initial stack, and other context elements
 corresponding to the source language thread of execution upon which the user is
 focused, if any. The result of the evaluation is the location description L of
-the <i>canonical frame address</i> (see 6.4 Call Frame Information) of the
-relevant call frame of the subprogram instance that immediately lexically
-encloses the current call frame’s subprogram or entry point.
+the canonical frame address (see 6.4 Call Frame Information) of the relevant
+call frame of the subprogram instance that immediately lexically encloses the
+current call frame’s subprogram or entry point.
 
 The DWARF is ill-formed if L is not comprised of one memory location description
 for one of the target architecture specific address spaces.
@@ -2096,6 +2153,8 @@ a variable, it uses the nesting structure of DWARF to determine which subroutine
 is the lexical parent and the DW_AT_static_link value to identify the
 appropriate active frame of the parent. It can then attempt to find the
 reference within the context of the parent.
+
+3.4 Call Site Entries and Parameters
 
 3.4.2 Call Site Parameters
 
@@ -2175,6 +2234,12 @@ describing the parameter's name.
 
 [non-normative] Examples using call site entries and related attributes are
 found in Appendix D.15 on page 353.
+
+3.5 Lexical Block Entries
+
+> NOTE: This section is the same as DWARF Version 5 section 3.5.
+
+4. Data Object and Object List Entries
 
 4.1 Data Object Entries
 
@@ -2357,30 +2422,7 @@ constant may have the following attributes:
 13. A DW_AT_linkage_name attribute for a variable or constant entry as described
     in Section 2.22 on page 56.
 
-4.2 Common Block Entries
-
-A Fortran common block may be described by a debugging information entry with
-the tag DW_TAG_common_block.
-
-The common block entry has a DW_AT_name attribute whose value is a
-null-terminated string containing the common block name. It may also have a
-DW_AT_linkage_name attribute as described in Section 2.22 on page 56.
-
-A common block entry also has a DW_AT_location attribute whose value is a DWARF
-expression E that describes the location of the common block at run-time. The
-result of the attribute is obtained by evaluating E with a context that has a
-result kind of a location description, an unspecified object, the compilation
-unit that contains E, an empty initial stack, and other context elements
-corresponding to the source language thread of execution upon which the user is
-focused, if any. The result of the evaluation is the location description of the
-base of the common block. See 2.5.4.2 Control Flow Operations for special
-evaluation rules used by the DW_OP_call* operations.
-
-The common block entry owns debugging information entries describing the
-variables contained within the common block.
-
-[non-normative] Fortran allows each declarer of a common block to independently
-define its contents; thus, common blocks are not types.
+5. Type Entries
 
 5.1 Base Type Entries
 
@@ -2425,16 +2467,8 @@ zero is assumed.
 A DW_TAG_base_type entry may have additional attributes that augment certain of
 the base type encodings; these are described in the following section.
 
-5.3 Type Modifier Entries
 
-...
-
-A modified type entry describing a pointer or reference type (using
-DW_TAG_pointer_type, DW_TAG_reference_type or DW_TAG_rvalue_reference_type) may
-have a DW_AT_address_class attribute to describe how objects having the given
-pointer or reference type are dereferenced.
-
-...
+5.7 Structure, Union, Class and Interface Type Entries
 
 5.7.3 Derived or Extended Structures, Classes and Interfaces
 
@@ -2461,31 +2495,31 @@ struct also has a DW_AT_data_member_location attribute, whose value describes
 the location of the beginning of the inherited type relative to the beginning
 address of the instance of the derived class. There are two cases:
 
- 1.  If the attribute is an integer constant B, it provides the offset in bytes
-     from the beginning of the containing entity.
- 
-     The result of the attribute is obtained by updating the bit offset of the
-     location description of the beginning of the containing entity by B scaled
-     by 8 (the byte size). The result is the location description of the base of
-     the member entry.
- 
-     [non-normative] If the beginning of the containing entity is not byte
-     aligned, then the beginning of the member entry has the same bit
-     displacement within a byte.
- 
- 2.  Otherwise, the attribute must be a DWARF expression E which is evaluated
-     with a context that has a result kind of a location description, an
-     unspecified object, the compilation unit that contains E, an initial stack
-     comprising the location description of the beginning of the containing
-     entity, and other context elements corresponding to the source language
-     thread of execution upon which the user is focused, if any. The result of
-     the evaluation is the location description of the base of the member entry.
- 
-     > [For further discussion...]
-     > The beginning of the containing entity can now be any location
-     > description, including those with more than one single location
-     > description, and those with single location descriptions that are of any
-     > kind and have any bit offset.
+1.  If the attribute is an integer constant B, it provides the offset in bytes
+    from the beginning of the containing entity.
+
+    The result of the attribute is obtained by updating the bit offset of the
+    location description of the beginning of the containing entity by B scaled
+    by 8 (the byte size). The result is the location description of the base of
+    the member entry.
+
+    [non-normative] If the beginning of the containing entity is not byte
+    aligned, then the beginning of the member entry has the same bit
+    displacement within a byte.
+
+2.  Otherwise, the attribute must be a DWARF expression E which is evaluated
+    with a context that has a result kind of a location description, an
+    unspecified object, the compilation unit that contains E, an initial stack
+    comprising the location description of the beginning of the containing
+    entity, and other context elements corresponding to the source language
+    thread of execution upon which the user is focused, if any. The result of
+    the evaluation is the location description of the base of the member entry.
+
+    > [For further discussion...]
+    > The beginning of the containing entity can now be any location
+    > description, including those with more than one single location
+    > description, and those with single location descriptions that are of any
+    > kind and have any bit offset.
 
 [non-normative] The interpretation of the value of this attribute for inherited
 types is the same as the interpretation for data members (see Section 5.7.6
@@ -2525,7 +2559,7 @@ entry has a DW_AT_explicit attribute.
 
 An entry for a virtual function also has a DW_AT_vtable_elem_location attribute
 whose value is a DWARF expression E. The result of the attribute is obtained by
-evaluating E with a context that has a result kind of a location description, an
+evaluating E with a context that has a result kind of a location description, an 
 unspecified object, the compilation unit that contains E, an initial stack
 comprising the location description of the object of the enclosing type, and
 other context elements corresponding to the source language thread of execution
@@ -2603,6 +2637,8 @@ should:
 3.  [non-normative] Evaluate the DW_AT_use_location description given in the
     type of mbr_ptr.
 
+5.18 Dynamic Properties of Types
+
 5.18.1 Data Location
 
 [non-normative] Some languages may represent objects using descriptors to hold
@@ -2639,47 +2675,13 @@ of the object which can then serve as a descriptor in subsequent calculation.
 > having an initial stack with the location description of the object since the
 > expression has to need it.
 
-6.1.1.1 Contents of the Name Index
+6. Other Debugging Information
 
-The name index must contain an entry for each debugging information entry that
-defines a named subprogram, label, variable, type, or namespace, subject to the
-following rules:
+6.2 Line Number Information
 
-  * All non-defining declarations (that is, debugging information entries with a
-    DW_AT_declaration attribute) are excluded.
+> NOTE: This section is the same as DWARF Version 5 section 6.2.
 
-  * DW_TAG_namespace debugging information entries without a
-    DW_AT_name attribute are included with the name "(anonymous namespace)".
-
-  * All other debugging information entries without a DW_AT_name attribute are
-    excluded.
-
-  * DW_TAG_subprogram, DW_TAG_inlined_subroutine, and DW_TAG_label debugging
-    information entries without an address attribute (DW_AT_low_pc,
-    DW_AT_high_pc, DW_AT_ranges, or DW_AT_entry_pc) are excluded.
-
-  * DW_TAG_variable debugging information entries with a DW_AT_location
-    attribute that includes a DW_OP_addr or DW_OP_form_tls_address operator are
-    included; otherwise, they are excluded.
-
-  * If a subprogram or inlined subroutine is included, and has a
-    DW_AT_linkage_name attribute, there will be an additional index entry for
-    the linkage name.
-
-For the purposes of determining whether a debugging information entry has a
-particular attribute (such as DW_AT_name), if debugging information entry A has
-a DW_AT_specification or DW_AT_abstract_origin attribute pointing to another
-debugging information entry B, any attributes of B are considered to be part of
-A.
-
-[non-normative] The intent of the above rules is to provide the consumer with
-some assurance that looking up an unqualified name in the index will yield all
-relevant debugging information entries that provide a defining declaration at
-global scope for that name.
-
-[non-normative] A producer may choose to implement additional rules for what
-names are placed in the index, and may communicate those rules to a cooperating
-consumer via an augmentation string, described below.
+6.4 Call Frame Information
 
 6.4.1 Structure of Call Frame Information
 
@@ -2720,52 +2722,52 @@ The register rules are:
     undefined
         A register that has this rule has no recoverable value in the previous
         frame. The previous value of this register is the undefined location
-        description (see 2.x.x Undefined Location Description Operations).
-        
+        description (see 2.5.4.4.2 Undefined Location Description Operations).
+    
         [non-normative] By convention, the register is not preserved by a
         callee.
-
+    
     same value
-        This register has not been modified from the previous caller frame. 
-
+        This register has not been modified from the previous caller frame.
+    
         If the current frame is the top frame, then the previous value of this
         register is the location description L that specifies one register
         location description SL. SL specifies the register location storage that
         corresponds to the register with a bit offset of 0 for the current
         thread.
-
+    
         If the current frame is not the top frame, then the previous value of
         this register is the location description obtained using the call frame
         information for the callee frame and callee program location invoked by
         the current caller frame for the same register.
-
+    
         [non-normative] By convention, the register is preserved by the callee,
         but the callee has not modified it.
-
+    
     offset(N)
         N is a signed byte offset. The previous value of this register is saved
-        at the location description L, where L is the location description of
-        the current CFA (see 2.x.x DWARF Operation Expressions) updated with the
+        at the location description L. Where L is the location description of
+        the current CFA (see 2.5.4 DWARF Operation Expressions) updated with the
         bit offset N scaled by 8 (the byte size).
-
+    
     val_offset(N)
         N is a signed byte offset. The previous value of this register is the
-        memory byte address of the location description L, where L is the
+        memory byte address of the location description L. Where L is the
         location description of the current CFA (see 2.5.4 DWARF Operation
         Expressions) updated with the bit offset N scaled by 8 (the byte size).
-
+    
         The DWARF is ill-formed if the CFA location description is not a memory
         byte address location description, or if the register size does not
         match the size of an address in the target architecture default address
         space.
-
+    
         [non-normative] Since the CFA location description is required to be a
         memory byte address location description, the value of val_offset(N)
         will also be a memory byte address location description since it is
         offsetting the CFA location description by N bytes. Furthermore, the
         value of val_offset(N) will be a memory byte address in the target
         architecture default address space.
-
+    
         > [For further discussion...]
         > Should DWARF allow the address size to be a different size to the size
         > of the register? Requiring them to be the same bit size avoids any
@@ -2778,46 +2780,46 @@ The register rules are:
         > reads out of bounds for the last register) for smaller registers.
         > There are no GDB tests that read a register out of bounds (except an
         > illegal hand written assembly test).
-
+    
     register(R)
         This register has been stored in another register numbered R.
-
+    
         The previous value of this register is the location description obtained
         using the call frame information for the current frame and current
         program location for register R.
-
+    
         The DWARF is ill-formed if the size of this register does not match the
         size of register R or if there is a cyclic dependency in the call frame
         information.
-
+    
         > [For further discussion...]
         > Should this also allow R to be larger than this register? If so is the
         > value stored in the low order bits and it is undefined what is stored
         > in the extra upper bits?
-
+    
     expression(E)
         The previous value of this register is located at the location
         description produced by evaluating the DWARF operation expression E (see
         2.5.4 DWARF Operation Expressions).
-
+    
         E is evaluated with the current context, except the result kind is a
         location description, the compilation unit is unspecified, the object is
         unspecified, and an initial stack comprising the location description of
         the current CFA (see 2.5.4 DWARF Operation Expressions).
-
+    
     val_expression(E)
-        The previous value of this register is located at the implicit location
-        description created from the value produced by evaluating the DWARF
-        operation expression E (see 2.5.4 DWARF Operation Expressions).
-
+        The previous value of this register is the value produced by evaluating
+        the DWARF operation expression E (see 2.5.4 DWARF Operation
+        Expressions).
+    
         E is evaluated with the current context, except the result kind is a
         value, the compilation unit is unspecified, the object is unspecified,
         and an initial stack comprising the location description of the current
         CFA (see 2.5.4 DWARF Operation Expressions).
-
+    
         The DWARF is ill-formed if the resulting value type size does not match
         the register size.
-
+    
         > [For further discussion...]
         > This has limited usefulness as the DWARF expression E can only produce
         > values up to the size of the generic type. This is due to not allowing
@@ -2825,8 +2827,8 @@ The register rules are:
         > makes it unusable for registers that are larger than the generic type.
         > However, expression(E) can be used to create an implicit location
         > description of any size.
-
-    architectural
+    
+      architectural
         The rule is defined externally to this specification by the augmenter.
 
 [non-normative] This table would be extremely large if actually constructed as
@@ -2853,7 +2855,7 @@ Frame Description Entries (FDE). There is at least one CIE in every non-empty
     of the length field plus the value of length must be an integral multiple of
     the address size specified in the address_size field.
 
-2.  CIE_id (4 or 8 bytes, see Section 7.4 on page 196)
+2.  CIE_id (4 or 8 bytes, see 7.4 32-Bit and 64-Bit DWARF Formats)
     A constant that is used to distinguish CIEs from FDEs.
 
     In the 32-bit DWARF format, the value of the CIE id in the CIE header is
@@ -2866,7 +2868,7 @@ Frame Description Entries (FDE). There is at least one CIE in every non-empty
     The value of the CIE version number is 4.
 
     > [For further discussion...]
-    > Should this be increased to 5?
+    > Would this be increased to 5 to reflect the changes in these extensions?
 
 4.  augmentation (sequence of UTF-8 characters)
     A null-terminated UTF-8 string that identifies the augmentation to this CIE
@@ -2899,13 +2901,13 @@ Frame Description Entries (FDE). There is at least one CIE in every non-empty
 
 7.  code_alignment_factor (unsigned LEB128)
     A constant that is factored out of all advance location instructions (see
-    Section 6.4.2.1 on page 177). The resulting value is (operand *
+    6.4.2.1 Row Creation Instructions). The resulting value is (operand *
     code_alignment_factor).
 
 8.  data_alignment_factor (signed LEB128)
-    A constant that is factored out of certain offset instructions (see Sections
-    6.4.2.2 on page 177 and 6.4.2.3 on page 179). The resulting value is
-    (operand * data_alignment_factor).
+    A constant that is factored out of certain offset instructions (see 6.4.2.2
+    CFA Definition Instructions and 6.4.2.3 Register Rule Instructions). The
+    resulting value is (operand * data_alignment_factor).
 
 9.  return_address_register (unsigned LEB128)
     An unsigned LEB128 constant that indicates which column in the rule table
@@ -2937,7 +2939,7 @@ An FDE contains the following fields, in order:
     Section 7.2.2 on page 184). The size of the length field plus the value of
     length must be an integral multiple of the address size.
 
-2.  CIE_pointer (4 or 8 bytes, see Section 7.4 on page 196)
+2.  CIE_pointer (4 or 8 bytes, see 7.4 32-Bit and 64-Bit DWARF Formats)
     A constant offset into the .debug_frame section that denotes the CIE that is
     associated with this FDE.
 
@@ -2950,8 +2952,8 @@ An FDE contains the following fields, in order:
     The number of bytes of program instructions described by this entry.
 
 5.  instructions (array of ubyte)
-    A sequence of table defining instructions that are described in Section
-    6.4.2.
+    A sequence of table defining instructions that are described in 6.4.2 Call
+    Frame Instructions.
 
 6.  padding (array of ubyte)
     Enough DW_CFA_nop instructions to make the size of this entry match the
@@ -2964,7 +2966,7 @@ operands may be encoded as part of the opcode (see Section 7.24 on page 238).
 The instructions are defined in the following sections.
 
 Some call frame instructions have operands that are encoded as DWARF operation
-expressions E (see Section 2.5.1 on page 26). The DWARF operations that can be
+expressions E (see 2.5.4 DWARF Operation Expressions). The DWARF operations that can be 
 used in E have the following restrictions:
 
   * DW_OP_addrx, DW_OP_call2, DW_OP_call4, DW_OP_call_ref, DW_OP_const_type,
@@ -2972,10 +2974,10 @@ used in E have the following restrictions:
     DW_OP_implicit_pointer, DW_OP_regval_type, DW_OP_reinterpret, and
     DW_OP_xderef_type operations are not allowed because the call frame
     information must not depend on other debug sections.
-
+  
   * DW_OP_push_object_address is not allowed because there is no object context
     to provide a value to push.
-
+  
   * DW_OP_call_frame_cfa and DW_OP_entry_value are not allowed because their
     use would be circular.
 
@@ -2984,49 +2986,41 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
 
 6.4.2.1 Row Creation Instructions
 
-...
+> NOTE: These instructions are the same as in DWARF Version 5 section 6.4.2.1.
 
 6.4.2.2 CFA Definition Instructions
 
 1.  DW_CFA_def_cfa
     The DW_CFA_def_cfa instruction takes two unsigned LEB128 operands
     representing a register number R and a (non-factored) byte displacement B.
-    The required action is to define the current CFA rule to be equivalent to
-    the result of evaluating the DWARF operation expression DW_OP_bregx R, B as
-    a location description.
+    The required action is to define the current CFA rule to be the result of
+    evaluating the DWARF operation expression DW_OP_bregx R, B as a location
+    description.
 
 2.  DW_CFA_def_cfa_sf
     The DW_CFA_def_cfa_sf instruction takes two operands: an unsigned LEB128
     value representing a register number R and a signed LEB128 factored byte
     displacement B. The required action is to define the current CFA rule to be
-    equivalent to the result of evaluating the DWARF operation expression
-    DW_OP_bregx R, B * data_alignment_factor as a location description.
+    the result of evaluating the DWARF operation expression DW_OP_bregx R, B *
+    data_alignment_factor as a location description.
 
     [non-normative] The action is the same as DW_CFA_def_cfa, except that the
     second operand is signed and factored.
 
-    > [For further discussion...]
-    > (ccoutant) I don't see what was wrong with the original DWARF 5
-    > description, which simply defines the operation in terms of the
-    > preceding one.
-    >
-    > (ttye) Formally defining what "except that the second operand is signed
-    > and factored" means seems clearer.
-
 3.  DW_CFA_def_cfa_register
     The DW_CFA_def_cfa_register instruction takes a single unsigned LEB128
     operand representing a register number R. The required action is to define
-    the current CFA rule to be equivalent to the result of evaluating the DWARF
-    operation expression DW_OP_bregx R, B as a location description. B is the
-    old CFA byte displacement.
+    the current CFA rule to be the result of evaluating the DWARF operation
+    expression DW_OP_bregx R, B as a location description. B is the old CFA
+    byte displacement.
 
     If the subprogram has no current CFA rule, or the rule was defined by a
     DW_CFA_def_cfa_expression instruction, then the DWARF is ill-formed.
 
 4.  DW_CFA_def_cfa_offset
-    The DW_CFA_def_cfa_offset instruction takes a single unsigned LEB128 operand
-    representing a (non-factored) byte displacement B. The required action is to
-    define the current CFA rule to be equivalent to the result of evaluating the
+    The DW_CFA_def_cfa_offset instruction takes a single unsigned LEB128
+    operand representing a (non-factored) byte displacement B. The required
+    action is to define the current CFA rule to be the result of evaluating the
     DWARF operation expression DW_OP_bregx R, B as a location description. R is
     the old CFA register number.
 
@@ -3036,9 +3030,9 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
 5.  DW_CFA_def_cfa_offset_sf
     The DW_CFA_def_cfa_offset_sf instruction takes a signed LEB128 operand
     representing a factored byte displacement B. The required action is to
-    define the current CFA rule to be equivalent to the result of evaluating the
-    DWARF operation expression DW_OP_bregx R, B * data_alignment_factor as a
-    location description. R is the old CFA register number.
+    define the current CFA rule to be the result of evaluating the DWARF
+    operation expression DW_OP_bregx R, B * data_alignment_factor as a location
+    description. R is the old CFA register number.
 
     If the subprogram has no current CFA rule, or the rule was defined by a
     DW_CFA_def_cfa_expression instruction, then the DWARF is ill-formed.
@@ -3049,9 +3043,9 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
 6.  DW_CFA_def_cfa_expression
     The DW_CFA_def_cfa_expression instruction takes a single operand encoded as
     a DW_FORM_exprloc value representing a DWARF operation expression E. The
-    required action is to define the current CFA rule to be equivalent to the
-    result of evaluating E with the current context, except the result kind is a
-    location description, the compilation unit is unspecified, the object is
+    required action is to define the current CFA rule to be the result of
+    evaluating E with the current context, except the result kind is a location
+    description, the compilation unit is unspecified, the object is
     unspecified, and an empty initial stack.
 
     [non-normative] See 6.4.2 Call Frame Instructions regarding restrictions on
@@ -3073,16 +3067,22 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
     for the register specified by R to "same value."
 
 3.  DW_CFA_offset
-	The DW_CFA_offset instruction takes two operands: a register number R
-	(encoded with the opcode) and an unsigned LEB128 constant representing a
-	factored displacement B. The required action is to change the rule for the
-	register specified by R to be an offset(B * data_alignment_factor) rule.
+    The DW_CFA_offset instruction takes two operands: a register number R
+    (encoded with the opcode) and an unsigned LEB128 constant representing a
+    factored displacement B. The required action is to change the rule for the
+    register specified by R to be an offset(B * data_alignment_factor) rule.
+
+    > NOTE: Seems this should be named DW_CFA_offset_uf since the offset is
+    > unsigned factored.
 
 4.  DW_CFA_offset_extended
     The DW_CFA_offset_extended instruction takes two unsigned LEB128 operands
     representing a register number R and a factored displacement B. This
     instruction is identical to DW_CFA_offset, except for the encoding and size
     of the register operand.
+
+    > NOTE: Seems this should be named DW_CFA_offset_extended_uf since the
+    > displacement is unsigned factored.
 
 5.  DW_CFA_offset_extended_sf
     The DW_CFA_offset_extended_sf instruction takes two operands: an unsigned
@@ -3096,6 +3096,9 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
     action is to change the rule for the register indicated by R to be a
     val_offset(B * data_alignment_factor) rule.
 
+    > NOTE: Seems this should be named DW_CFA_val_offset_uf since the
+    displacement is unsigned factored.
+
 7.  DW_CFA_val_offset_sf
     The DW_CFA_val_offset_sf instruction takes two operands: an unsigned LEB128
     value representing a register number R and a signed LEB128 factored
@@ -3103,9 +3106,9 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
     that B is signed.
 
 8.  DW_CFA_register
-	The DW_CFA_register instruction takes two unsigned LEB128 operands
-	representing register numbers R1 and R2 respectively. The required action is
-	to set the rule for the register specified by R1 to be a register(R2) rule.
+    The DW_CFA_register instruction takes two unsigned LEB128 operands
+    representing register numbers R1 and R2 respectively. The required action is
+    to set the rule for the register specified by R1 to be a register(R2) rule.
 
 9.  DW_CFA_expression
     The DW_CFA_expression instruction takes two operands: an unsigned LEB128
@@ -3116,7 +3119,7 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
     [non-normative] That is, E computes the location description where the
     register value can be retrieved.
 
-    [non-normative] See Section 6.4.2 on page 176 regarding restrictions on the
+    [non-normative] See 6.4.2 Call Frame Instructions regarding restrictions on the
     DWARF expression operations that can be used in E.
 
 10. DW_CFA_val_expression
@@ -3125,7 +3128,7 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
     representing a DWARF operation expression E. The required action is to
     change the rule for the register specified by R to be a val_expression(E)
     rule.
-    
+
     [non-normative] That is, E computes the value of register R.
 
     [non-normative] See 6.4.2 Call Frame Instructions regarding restrictions on
@@ -3145,8 +3148,25 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
     operand that represents a register number R. This instruction is identical
     to DW_CFA_restore, except for the encoding and size of the register operand.
 
-7.4 32-Bit and 64-Bit DWARF Formats
+6.4.2.4 Row State Instructions
 
+> NOTE: These instructions are the same as in DWARF Version 5 section 6.4.2.4.
+
+6.4.2.5 Padding Instruction
+
+> NOTE: These instructions are the same as in DWARF Version 5 section 6.4.2.5.
+
+6.4.3 Call Frame Instruction Usage
+
+> NOTE: The same as in DWARF Version 5 section 6.4.3.
+
+6.4.4 Call Frame Calling Address
+
+> NOTE: The same as in DWARF Version 5 section 6.4.4.
+
+7. Data Representation
+
+7.4 32-Bit and 64-Bit DWARF Formats
 ...
 
 3.  Within the body of the .debug_info section, certain forms of attribute value
@@ -3170,130 +3190,27 @@ include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
 
 ...
 
-7.5.4 Attribute Encodings
-
-The encodings for the attribute names are given in Table 7.5 following.
-
-Table 7.5: Attribute encodings
------------------- ------ -----------------
-Attribute name     Value  Classes
------------------- ------ -----------------
-...
------------------- ------ -----------------
+7.5 Format of Debugging Information
 
 7.5.5 Classes and Forms
 
-...
-
-  * reference
-    There are four types of reference.
-
-      - The first type of reference...
-
-      - The second type of reference can identify any debugging information
-        entry within a .debug_info section; in particular, it may refer to an
-        entry in a different compilation unit from the unit containing the
-        reference, and may refer to an entry in a different shared object file.
-        This type of reference (DW_FORM_ref_addr) is an offset from the
-        beginning of the .debug_info section of the target executable or shared
-        object file, or, for references within a supplementary object file, an
-        offset from the beginning of the local .debug_info section; it is
-        relocatable in a relocatable object file and frequently relocated in an
-        executable or shared object file. In the 32-bit DWARF format, this
-        offset is a 4-byte unsigned value; in the 64-bit DWARF format, it is an
-        8-byte unsigned value (see Section 7.4 on page 196).
-
-        [non-normative] A debugging information entry that may be referenced by
-        another compilation unit using DW_FORM_ref_addr must have a global
-        symbolic name.
-
-        [non-normative] For a reference from one executable or shared object
-        file to another, the reference is resolved by the debugger to identify
-        the executable or shared object file and the offset into that file's
-        .debug_info section in the same fashion as the run time loader, either
-        when the debug information is first read, or when the reference is used.
+> NOTE: The same as in DWARF Version 5 section 7.5.5.
 
 7.7 DWARF Expressions
 
+> NOTE: Rename DWARF Version 5 section 7.7 to reflect the unification of
+> location descriptions into DWARF expressions.
+
 7.7.1 Operation Expressions
 
-A DWARF operation expression is stored in a block of contiguous bytes. The bytes
-form a sequence of operations. Each operation is a 1-byte code that identifies
-that operation, followed by zero or more bytes of additional data. The encodings
-for the operations are described in Table 7.9.
 
-Table 7.9: DWARF operation encodings
------------- ----- --------- ---------------------------
-                   No. of
-Operation    Code  Operands  Notes
------------- ----- --------- ---------------------------
-...
------------- ----- --------- ---------------------------
+> NOTE: Rename DWARF Version 5 section 7.7.1 and delete section 7.7.2 to reflect
+> the unification of location descriptions into DWARF expressions.
 
 7.7.2 Location List Expressions
 
-...
-
-7.12 Source Languages
-
-The encodings of the constants used in the DW_AT_language attribute are given in
-Table 7.17. Names marked with † and their associated values are reserved, but
-the languages they represent are not well supported. Table 7.17 also shows the
-default lower bound, if any, assumed for an omitted DW_AT_lower_bound attribute
-in the context of a DW_TAG_subrange_type debugging information entry for each
-defined language.
-
-Table 7.17: Language encodings
--------------------- ------ -------------------
-Language name        Value  Default Lower Bound
--------------------- ------ -------------------
-...
--------------------- ------ -------------------
-
-7.13 Address Class Encodings
-
-The value of the common address class encoding DW_ADDR_none is 0.
-
-7.24 Call Frame Information
-
-In the 32-bit DWARF format, the value of the CIE id in the CIE header is
-0xffffffff; in the 64-bit DWARF format, the value is 0xffffffffffffffff.
-
-The value of the CIE version number is 4.
-
-Call frame instructions are encoded in one or more bytes. The primary opcode is
-encoded in the high order two bits of the first byte (that is, opcode = byte ≫
-6). An operand or extended opcode may be encoded in the low order 6 bits.
-Additional operands are encoded in subsequent bytes. The instructions and their
-encodings are presented in Table 7.29 on the following page.
-
-Table 7.29: Call frame instruction encodings
---------------------- ------- ------ --------------- ---------------
-                      High 2  Low 6
-Instruction           Bits    Bits   Operand 1       Operand 2
---------------------- ------- ------ --------------- ---------------
-...
---------------------- ------- ------ --------------- ---------------
-
-7.32 Type Signature Computation
-
-Table 7.32: Attributes used in type signature computation
----------------------------------------------------------
-...
----------------------------------------------------------
-
-Appendix A
-
-Attributes by Tag Value (Informative)
-
-...
-
-Table A.1: Attributes by tag value
------------------------------- -------------------------------------
-TAG name                       Applicable attributes
------------------------------- -------------------------------------
-...
------------------------------- -------------------------------------
+> NOTE: Rename DWARF Version 5 section 7.7.3 to reflect that location lists are
+> a kind of DWARF expression.
 
 Appendix D
 
