@@ -438,8 +438,10 @@ The result of the evaluation is:
         undefined location description.
 
         [non-normative] This rule is for backwards compatibility with DWARF
-        Version 5 which uses an empty operation expression for this purpose.
-  
+        Version 5 which has no explicit operation to create an undefined
+        location description, and uses an empty operation expression for this
+        purpose.
+
       * If the top stack entry is a location description, or can be converted
         to one (see 2.5.4.4.3 Memory Location Description Operations), then the
         result is that, possibly converted, location description. Any other
@@ -466,7 +468,9 @@ The result of the evaluation is:
         undefined location description.
 
         [non-normative] This rule is for backwards compatibility with DWARF
-        Version 5 which uses an empty operation expression for this purpose.
+        Version 5 which has no explicit operation to create an undefined
+        location description, and uses an empty operation expression for this
+        purpose.
 
         > [For further discussion...]
         > This rule is consistent with the rule above for when a location
@@ -1239,9 +1243,15 @@ meaningful.
 
 An undefined location description specifies the undefined location storage.
 There is no concept of the size of the undefined location storage, nor of a bit
-offset for an undefined location description. The DW_OP_*piece operations can
-implicitly specify an undefined location description, allowing any size and
-offset to be specified, and results in a part with all undefined bits.
+offset for an undefined location description. The DW_OP_*offset operations
+leave an undefined location description unchanged. The DW_OP_*piece operations
+can explicitly or implicitly specify an undefined location description,
+allowing any size and offset to be specified, and results in a part with all
+undefined bits.
+
+1.  DW_OP_undefined
+    DW_OP_undefined pushes a location description L that comprises one
+    undefined location description SL.
 
 2.5.4.4.3 Memory Location Description Operations
 
@@ -3279,6 +3289,7 @@ Operation           Code  Operands  Notes
 DW_OP_offset        TBA      0
 DW_OP_offset_uconst TBA      1      ULEB128 byte displacement
 DW_OP_bit_offset    TBA      0
+DW_OP_undefined     TBA      0
 ------------------- ----- --------- ---------------------------
 
 7.7.2 Location List Expressions
