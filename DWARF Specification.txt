@@ -1693,7 +1693,9 @@ that are in the order that the associated part operations are executed.
 
 To support incremental creation, a composite location storage can be in an
 incomplete state. When an incremental operation operates on an incomplete
-composite location storage, it adds a new part.
+composite location storage, it adds a new part, otherwise it creates a new
+composite location storage. The DW_OP_piece_end operation explicitly makes an
+incomplete composite location storage complete.
 
 A composite location description that specifies a composite location storage
 that is incomplete is termed an incomplete composite location description. A
@@ -1724,7 +1726,6 @@ composite location descriptions.
 defined to be compatible with the definitions in DWARF Version 5.
 
 1.  DW_OP_piece
-
     DW_OP_piece has a single unsigned LEB128 integer that represents a byte size
     S.
 
@@ -1792,7 +1793,6 @@ defined to be compatible with the definitions in DWARF Version 5.
     > compatibility with DWARF Version 5 is likely a stronger consideration.
 
 2.  DW_OP_bit_piece
-
     DW_OP_bit_piece has two operands. The first is an unsigned LEB128 integer
     that represents the part bit size S. The second is an unsigned LEB128
     integer that represents a bit displacement B.
@@ -1809,6 +1809,15 @@ defined to be compatible with the definitions in DWARF Version 5.
     DW_OP_bit_offset operation can be used to update the location description
     before using it as the part location description of a DW_OP_bit_piece
     operation.
+
+3.  DW_OP_piece_end
+    If the top stack entry is not a location description L comprised of one
+    incomplete composite location description SL, then the DWARF expression is
+    ill-formed.
+
+    Otherwise, the incomplete composite location storage LS specified by SL is
+    updated to be a complete composite location description with the same
+    parts.
 
 2.5.5 DWARF Location List Expressions
 
@@ -3290,6 +3299,7 @@ DW_OP_offset        TBA      0
 DW_OP_offset_uconst TBA      1      ULEB128 byte displacement
 DW_OP_bit_offset    TBA      0
 DW_OP_undefined     TBA      0
+DW_OP_piece_end     TBA      0
 ------------------- ----- --------- ---------------------------
 
 7.7.2 Location List Expressions
