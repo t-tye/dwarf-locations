@@ -1215,6 +1215,20 @@ stack.
     > so the non-normative text seems to overstate how this is being used. Or
     > are there other attributes that need to state they pass an object?
 
+5.  DW_OP_call_frame_entry_reg
+    DW_OP_call_frame_entry_reg has a single unsigned LEB128 integer operand that
+    represents a target architecture register number R.
+
+    It pushes a location description L that holds the value of register R on
+    entry to the current subprogram as defined by the call frame information
+    (see Section 6.4 "Call Frame Information").
+
+    [non-normative] If there is no call frame information defined, then the
+    default rules for the target architecture are used. If the register rule is
+    <i>undefined</i>, then the undefined location description is pushed. If the
+    register rule is <i>same value</i>, then a register location description for
+    R is pushed.
+
 2.5.4.4.2 Undefined Location Description Operations
 
 [non-normative] The undefined location storage represents a piece or all of an
@@ -3343,6 +3357,15 @@ used in E have the following restrictions:
   * DW_OP_call_frame_cfa and DW_OP_entry_value are not allowed because their
     use would be circular.
 
+  * DW_OP_call_frame_entry_reg is not allowed if evaluating E causes a circular
+    dependency between DW_OP_call_frame_entry_reg operations.
+
+    [non-normative] For example, if a register R1 has a
+    DW_CFA_def_cfa_expression instruction that evaluates a
+    DW_OP_call_frame_entry_reg operation that specifies register R2, and
+    register R2 has a DW_CFA_def_cfa_expression instruction that that evaluates
+    a DW_OP_call_frame_entry_reg operation that specifies register R1.
+
 [non-normative] Call frame instructions to which these restrictions apply
 include DW_CFA_def_cfa_expression, DW_CFA_expression, and DW_CFA_val_expression.
 
@@ -3636,6 +3659,7 @@ DW_OP_extend                       TBA      2      ULEB128 bit size,
                                                    ULEB128 count
 DW_OP_select_bit_piece             TBA      2      ULEB128 bit size,
                                                    ULEB128 count
+DW_OP_call_frame_entry_reg         TBA      1      ULEB128 register number
 ---------------------------------- ----- --------- ---------------------------
 
 7.7.2 Location List Expressions
