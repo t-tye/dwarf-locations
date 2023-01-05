@@ -1877,6 +1877,56 @@ defined to be compatible with the definitions in DWARF Version 5.
     updated to be a complete composite location description with the same
     parts.
 
+4.  DW_OP_extend
+    DW_OP_extend has two operands. The first is an unsigned LEB128 integer that
+    represents the element bit size S. The second is an unsigned LEB128 integer
+    that represents a count C.
+
+    It pops one stack entry that must be a location description and is treated
+    as the part location description PL.
+
+    A location description L comprised of one complete composite location
+    description SL is pushed on the stack.
+
+    A complete composite location storage LS is created with C identical parts
+    P. Each P specifies PL and has a bit size of S.
+
+    SL specifies LS with a bit offset of 0.
+
+    The DWARF expression is ill-formed if the element bit size or count are 0.
+
+5.  DW_OP_select_bit_piece
+    DW_OP_select_bit_piece has two operands. The first is an unsigned LEB128
+    integer that represents the element bit size S. The second is an unsigned
+    LEB128 integer that represents a count C.
+
+    It pops three stack entries. The first must be an integral type value that
+    represents a bit mask value M. The second must be a location description
+    that represents the one-location description L1. The third must be a
+    location description that represents the zero-location description L0.
+
+    A complete composite location storage LS is created with C parts PN ordered
+    in ascending N from 0 to C-1 inclusive. Each PN specifies location
+    description PLN and has a bit size of S.
+
+    PLN is as if the DW_OP_bit_offset N*S operation was applied to PLXN.
+
+    PLXN is the same as L0 if the Nth least significant bit of M is a zero,
+    otherwise it is the same as L1.
+
+    A location description L comprised of one complete composite location
+    description SL is pushed on the stack. SL specifies LS with a bit offset of
+    0.
+
+    The DWARF expression is ill-formed if S or C are 0, or if the bit size of M
+    is less than C.
+
+> [For further discussion...]
+> Should the count operand for DW_OP_extend and DW_OP_select_bit_piece be
+> changed to get the count value off the stack? This would allow support for
+> architectures that have variable length vector instructions such as ARM and
+> RISC-V.
+
 2.5.5 DWARF Location List Expressions
 
 [non-normative] To meet the needs of recent computer architectures and
@@ -3531,6 +3581,10 @@ DW_OP_aspace_bregx                 TBA      2      ULEB128 register number,
 DW_OP_aspace_implicit_pointer      TBA      2      4-byte or 8-byte offset of
                                                    DIE, SLEB128 byte
                                                    displacement
+DW_OP_extend                       TBA      2      ULEB128 bit size,
+                                                   ULEB128 count
+DW_OP_select_bit_piece             TBA      2      ULEB128 bit size,
+                                                   ULEB128 count
 ---------------------------------- ----- --------- ---------------------------
 
 7.7.2 Location List Expressions
