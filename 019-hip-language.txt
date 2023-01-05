@@ -1,0 +1,65 @@
+Part 19: Add the HIP Programing Language
+
+PROBLEM DESCRIPTION
+
+Add the HIP programming language, which is supported by the AMDGPU.
+
+PROPOSAL for DWARF 5
+
+In Section 3.1.1 "Full and Partial Compilation Unit Entries", add the following
+row to Table 3.1 "Language Names":
+
+    ----------------------------------------------------------------------------
+
+    Table 3.1: Language Names
+    ==================== =============================
+    Language Name        Meaning
+    ==================== =============================
+    DW_LANG_HIP          HIP
+    ==================== =============================
+
+    ----------------------------------------------------------------------------
+
+In Section 7.12 "Source Languages", add the following row to Table 7.17
+"Language encodings":
+
+    ----------------------------------------------------------------------------
+
+    Table 7.17: Language encodings
+    ==================== ====== ===================
+    Language Name        Value  Default Lower Bound
+    ==================== ====== ===================
+    DW_LANG_HIP          0x001d 0
+    ==================== ====== ===================
+
+    ----------------------------------------------------------------------------
+
+PROPOSAL for DWARF 6 Draft 20221116
+
+In Section 3.1.1 "Full and Partial Compilation Unit Entries", add the following
+row to Table 3.1 "Language Names":
+
+    ----------------------------------------------------------------------------
+
+    Table 3.1: Language Names
+    ==================== ================= ==================
+    Language name        Meaning           Version Scheme
+    ==================== ================= ==================
+    DW_LNAME_HIP         HIP
+    ==================== ================= ==================
+
+    ----------------------------------------------------------------------------
+
+In Section 7.12 "Source Languages", add the following row to Table 7.17
+"Language encodings":
+
+    ----------------------------------------------------------------------------
+
+    Table 7.17: Language encodings
+    ==================== ====== ===================
+    Language name        Value  Default Lower Bound
+    ==================== ====== ===================
+    DW_LNAME_HIP ‡       0x001d 0
+    ==================== ====== ===================
+
+    ----------------------------------------------------------------------------
