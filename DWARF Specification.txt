@@ -2302,6 +2302,7 @@ Table 3.1: Language names
 Language name      Meaning
 ------------------ ---------------------
 ...
+DW_LANG_HIP        HIP
 ------------------ ---------------------
 
 3.3.5 Low-Level Information
@@ -3673,6 +3674,7 @@ Table 7.17: Language encodings
 Language name        Value  Default Lower Bound
 -------------------- ------ -------------------
 ...
+DW_LANG_HIP          TBA    0
 -------------------- ------ -------------------
 
 7.13 Address Class Encodings
