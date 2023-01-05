@@ -21,6 +21,7 @@ DW_AT_memory_space      Pointer or reference types (see 5.3 "Type Modifier Entri
 DW_AT_lanes             SIMD/SIMT lane count (see 3.3.5 "Low-Level Information")
 DW_AT_active_lane       SIMT active lanes (see 3.3.5 "Low-Level Information")
 DW_AT_lane_pc           SIMT lane program location (see 3.3.5 "Low-Level Information")
+DW_AT_vector_size       Base type vector size (see Section 5.1 "Base Type Entries")
 ----------------------- -------------------------------------------------------
 
 2.5 DWARF Expressions
@@ -2920,6 +2921,26 @@ containing storage to the beginning of the value. Bits that are part of the
 offset are padding. If this attribute is omitted a default data bit offset of
 zero is assumed.
 
+A DW_TAG_base_type debugger information entry for a base type T may have a
+DW_AT_vector_size attribute whose value is an integer constant that is the
+vector type size N. The representation of a vector base type is as N contiguous
+elements, each one having the representation of a base type T' that is the same
+as T without the DW_AT_vector_size attribute. If a DW_TAG_base_type debugger
+information entry does not have a DW_AT_vector_size attribute, then the base
+type is not a vector type. The DWARF is ill-formed if N is not greater than 0.
+
+> [For further discussion...]
+> LLVM has mention of a non-upstreamed debugger information entry that is
+> intended to support vector types. However, that was not for a base type so
+> would not be suitable as the type of a stack value entry. But perhaps that
+> could be replaced by using this attribute.
+
+> [For further discussion...]
+> Compare this with the DW_AT_GNU_vector extension supported by GNU. Is it
+> better to add an attribute to the existing DW_TAG_base_type debug entry, or
+> allow some forms of DW_TAG_array_type (those that have the DW_AT_GNU_vector
+> attribute) to be used as stack entry value types?
+
 A DW_TAG_base_type entry may have additional attributes that augment certain of
 the base type encodings; these are described in the following section.
 
@@ -3759,6 +3780,7 @@ DW_AT_memory_space                 TBA    constant
 DW_AT_lanes                        TBA    constant, exprloc, loclist
 DW_AT_active_lane                  TBA    exprloc, loclist
 DW_AT_lane_pc                      TBA    exprloc, loclist
+DW_AT_vector_size                  TBA    constant
 ---------------------------------- ------ -----------------
 
 7.5.5 Classes and Forms
@@ -3909,6 +3931,8 @@ DW_AT_address_space
 ...
 DW_AT_memory_space
 ...
+DW_AT_vector_size
+...
 ---------------------------------------------------------
 
 Appendix A
@@ -3922,6 +3946,7 @@ Table A.1: Attributes by tag value
 TAG name                       Applicable attributes
 ------------------------------ -------------------------------------
 ...
+DW_TAG_base_type               DW_AT_vector_size
 DW_TAG_pointer_type            DW_AT_address_space
                                DW_AT_memory_space
 DW_TAG_reference_type          DW_AT_address_space
