@@ -1877,7 +1877,56 @@ defined to be compatible with the definitions in DWARF Version 5.
     updated to be a complete composite location description with the same
     parts.
 
-4.  DW_OP_extend
+4.  DW_OP_overlay
+    DW_OP_overlay pops four stack entries. The first must be an integral type
+    value that represents the overlay byte size value S. The second must be an
+    integral type value that represents the overlay byte offset value O. The
+    third must be a location description that represents the overlay location
+    description OL. The fourth must be a location description that represents
+    the base location description BL.
+
+    The action is the same as for DW_OP_bit_overlay, except that the overlay
+    bit size BS and overlay bit offset BO used are S and O respectively scaled
+    by 8 (the byte size).
+
+5.  DW_OP_bit_overlay
+    DW_OP_bit_overlay pops four stack entries. The first must be an integral
+    type value that represents the overlay bit size value BS. The second must
+    be an integral type value that represents the overlay bit offset value BO.
+    The third must be a location description that represents the overlay
+    location description OL. The fourth must be a location description that
+    represents the base location description BL.
+
+    The DWARF expression is ill-formed if BS or BO are negative values.
+
+    rbss(L) is the minimum remaining bit storage size of L which is defined as
+    follows. LS is the location storage and LO is the location bit offset
+    specified by a single location description SL of L. The remaining bit
+    storage size RBSS of SL is the bit size of LS minus LO. rbss(L) is the
+    minimum RBSS of each single location description SL of L.
+
+    The DWARF expression is ill-formed if rbss(BL) is less than BO plus BS.
+
+    If BS is 0, then the operation pushes BL.
+
+    If BO is 0 and BS equals rbss(BL), then the operation pushes OL.
+
+    Otherwise, the operation is equivalent to performing the following steps to
+    push a composite location description.
+
+    [non-normative] The composite location description is conceptually the base
+    location description BL with the overlay location description OL positioned
+    as an overlay starting at the overlay offset BO and covering overlay bit
+    size BS.
+
+    1.  If BO is not 0 then push BL followed by performing the DW_OP_bit_piece
+        BO, 0 operation.
+    2.  Push OL followed by performing the DW_OP_bit_piece BS, 0 operation.
+    3.  If rbss(BL) is greater than BO plus BS, push BL followed by performing
+        the DW_OP_bit_piece (rbss(BL) - BO - BS), (BO + BS) operation.
+    4.  Perform the DW_OP_piece_end operation.
+
+6.  DW_OP_extend
     DW_OP_extend has two operands. The first is an unsigned LEB128 integer that
     represents the element bit size S. The second is an unsigned LEB128 integer
     that represents a count C.
@@ -1895,7 +1944,7 @@ defined to be compatible with the definitions in DWARF Version 5.
 
     The DWARF expression is ill-formed if the element bit size or count are 0.
 
-5.  DW_OP_select_bit_piece
+7.  DW_OP_select_bit_piece
     DW_OP_select_bit_piece has two operands. The first is an unsigned LEB128
     integer that represents the element bit size S. The second is an unsigned
     LEB128 integer that represents a count C.
@@ -3581,6 +3630,8 @@ DW_OP_aspace_bregx                 TBA      2      ULEB128 register number,
 DW_OP_aspace_implicit_pointer      TBA      2      4-byte or 8-byte offset of
                                                    DIE, SLEB128 byte
                                                    displacement
+DW_OP_overlay                      TBA      0
+DW_OP_bit_overlay                  TBA      0
 DW_OP_extend                       TBA      2      ULEB128 bit size,
                                                    ULEB128 count
 DW_OP_select_bit_piece             TBA      2      ULEB128 bit size,
